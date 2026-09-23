@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% block title %}Order #{{ order.id }} - HomeBakery{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-9 col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <div>
+                {% if is_seller %}
+                    <a href="{% url 'seller_dashboard' %}" class="btn btn-outline-secondary btn-sm mb-2">
+                        <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                {% else %}
+                    <a href="{% url 'customer_orders' %}" class="btn btn-outline-secondary btn-sm mb-2">
+                        <i class="fa-solid fa-arrow-left"></i> Back to My Orders
+                    </a>
+                {% endif %}
+                <a href="{% url 'order_invoice' order.id %}" target="_blank" class="btn btn-outline-primary btn-sm mb-2 ms-1">
+                    <i class="fa-solid fa-print"></i> Print Bill / Invoice
+                </a>
+                <h2 class="mb-0">Order #{{ order.id }}</h2>
+            </div>
+            <div class="text-end">
+                <div class="mb-1">
+                    {% if order.status == 'pending' %}
+                        <span class="badge bg-warning text-dark fs-6 px-3 py-2">Pending</span>
+                    {% elif order.status == 'preparing' %}
+                        <span class="badge bg-info text-dark fs-6 px-3 py-2">Preparing</span>
+                    {% elif order.status == 'ready' %}
+                        <span class="badge bg-primary fs-6 px-3 py-2">Ready</span>
+                    {% elif order.status == 'delivered' %}
+                        <span class="badge bg-success fs-6 px-3 py-2">Delivered</span>
+                    {% else %}
+                        <span class="badge bg-secondary fs-6 px-3 py-2">{{ order.get_status_display }}</span>
+                    {% endif %}
+                </div>
+                <div>
+                    {% if order.payment_status == 'paid' %}
+                        <span class="badge bg-success px-2 py-1"><i class="fa-solid fa-check-circle"></i> Paid Online</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark px-2 py-1"><i class="fa-solid fa-clock"></i> Pay on Delivery</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
+                <div class="row mb-4">
+                    <div class="col-sm-6">
+                        <h6 class="text-muted text-uppercase small fw-bold">Customer</h6>
+                        <div class="fw-bold">{{ order.customer.username }}</div>
+                        <div><i class="fa-solid fa-phone small text-muted"></i> {{ order.contact_number }}</div>
+                        {% if order.customer.email %}
+                            <div><i class="fa-solid fa-envelope small text-muted"></i> {{ order.customer.email }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-sm-6">
+                        <h6 class="text-muted text-uppercase small fw-bold">Baker / Kitchen</h6>
+                        <div class="fw-bold">{{ order.seller.business_name }}</div>
+                        {% if order.seller.fssai_number %}
+                            <div class="small text-muted">FSSAI Lic: {{ order.seller.fssai_number }}</div>
+                        {% endif %}
+                        <div><i class="fa-solid fa-phone small text-muted"></i> {{ order.seller.user.phone }}</div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="row mb-4">
+                    <div class="col-sm-6">
+                        <h6 class="text-muted text-uppercase small fw-bold">Delivery Address</h6>
+                        <p class="mb-0">{{ order.delivery_address }}</p>
+                    </div>
+                    <div class="col-sm-6">
+                        <h6 class="text-muted text-uppercase small fw-bold">Schedule &amp; Timestamps</h6>
+                        <div><strong>Target Delivery:</strong> {{ order.delivery_date|date:"l, M d, Y - h:i A" }}</div>
+                        <div class="small text-muted">Placed: {{ order.order_date|date:"M d, Y h:i A" }}</div>
+                    </div>
+                </div>
+
+                <!-- Payment Details Card -->
+                <div class="bg-light p-3 rounded mb-4 border">
+                    <div class="row align-items-center">
+                        <div class="col-sm-6">
+                            <h6 class="text-muted text-uppercase small fw-bold mb-2">Payment Details</h6>
+                            <div><strong>Method:</strong> {{ order.get_payment_method_display }}</div>
+                            <div>
+                                <strong>Status:</strong>
+                                {% if order.payment_status == 'paid' %}
+                                    <span class="text-success fw-bold"><i class="fa-solid fa-circle-check"></i> Paid</span>
+                                {% elif order.payment_status == 'pending' %}
+                                    <span class="text-warning-emphasis fw-bold"><i class="fa-solid fa-clock"></i> Cash on Delivery Pending</span>
+                                {% else %}
+                                    <span class="text-danger fw-bold"><i class="fa-solid fa-circle-xmark"></i> Failed</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-sm-6 text-sm-end mt-2 mt-sm-0">
+                            {% if order.transaction_id %}
+                                <div class="small text-muted">Txn Ref: <code>{{ order.transaction_id }}</code></div>
+                            {% endif %}
+                            {% if order.paid_at %}
+                                <div class="small text-muted">Paid at: {{ order.paid_at|date:"M d, Y h:i A" }}</div>
+                            {% endif %}
+                            <div class="mt-2">
+                                <a href="{% url 'order_invoice' order.id %}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="fa-solid fa-file-invoice"></i> Open Printable Bill
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h6 class="text-muted text-uppercase small fw-bold mb-3">Order Items</h6>
+                <div class="table-responsive mb-3">
+                    <table class="table align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Item</th>
+                                <th class="text-center">Qty</th>
+                                <th class="text-end">Price</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in order.items.all %}
+                            <tr>
+                                <td>
+                                    <strong>{{ item.display_name }}</strong>
+                                    {% if item.customization_notes %}
+                                        <div class="small text-muted">Customization: {{ item.customization_notes }}</div>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center fw-semibold">{{ item.formatted_quantity }}</td>
+                                <td class="text-end">
+                                    ₹{{ item.price_at_order }}
+                                </td>
+                                <td class="text-end fw-bold">₹{{ item.subtotal }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="row justify-content-end">
+                    <div class="col-md-5">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Delivery Fee</span>
+                            <span>₹30.00</span>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between fw-bold fs-5">
+                            <span>Total Amount</span>
+                            <span class="text-success">₹{{ order.total_amount }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {% if is_seller %}
+                    <div class="mt-4 pt-3 border-top">
+                        <form method="POST" action="{% url 'update_order_status' order.id %}" class="d-flex align-items-center gap-2">
+                            {% csrf_token %}
+                            <label class="form-label fw-bold mb-0">Update Status:</label>
+                            <select name="status" class="form-select form-select-sm" style="max-width: 180px;">
+                                <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Pending</option>
+                                <option value="preparing" {% if order.status == 'preparing' %}selected{% endif %}>Preparing</option>
+                                <option value="ready" {% if order.status == 'ready' %}selected{% endif %}>Ready</option>
+                                <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>Delivered</option>
+                                <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                            </select>
+                            <button type="submit" class="btn btn-bakery btn-sm">Save Status</button>
+                        </form>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

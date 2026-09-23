@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}Your Cart - HomeBakery{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fa-solid fa-cart-shopping text-warning"></i> Your Cart</h2>
+    {% if cart_items %}
+        <a href="{% url 'product_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-plus"></i> Add More Bakes
+        </a>
+    {% endif %}
+</div>
+
+{% if cart_items %}
+<div class="table-responsive mb-4">
+    <table class="table align-middle bg-white shadow-sm rounded overflow-hidden">
+        <thead class="table-light">
+            <tr>
+                <th style="min-width: 220px;">Product</th>
+                <th>Baker</th>
+                <th>Target Delivery</th>
+                <th class="text-center" style="min-width: 140px;">Quantity</th>
+                <th class="text-end">Price</th>
+                <th class="text-end">Subtotal</th>
+                <th class="text-center"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in cart_items %}
+            <tr>
+                <td>
+                    <a href="{% url 'product_detail' item.product.id %}" class="fw-bold text-dark text-decoration-none">
+                        {{ item.product.display_name }}
+                    </a>
+                    {% if item.customization_notes %}
+                        <div class="small text-muted"><i class="fa-solid fa-wand-magic-sparkles text-warning"></i> {{ item.customization_notes }}</div>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="badge bg-light text-dark border">
+                        <i class="fa-solid fa-store text-warning"></i> {{ item.product.seller.business_name }}
+                    </span>
+                </td>
+                <td>
+                    <span class="small fw-semibold">{{ item.delivery_date|date:"M d, Y" }}</span>
+                    <br><small class="text-muted">{{ item.delivery_date|date:"h:i A" }}</small>
+                </td>
+                <td class="text-center">
+                    <div class="d-flex justify-content-center align-items-center gap-1">
+                        <form method="POST" action="{% url 'update_cart_quantity' item.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="decrease">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary px-2 py-0" title="Decrease">−</button>
+                        </form>
+                        <form method="POST" action="{% url 'update_cart_quantity' item.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <input type="number" name="quantity" value="{{ item.formatted_quantity }}" min="1" step="1" 
+                                   class="form-control form-control-sm text-center fw-bold px-1" style="width: 50px; height: 28px; display: inline-block;"
+                                   title="Type desired quantity and press Enter"
+                                   onchange="this.form.submit()">
+                        </form>
+                        <form method="POST" action="{% url 'update_cart_quantity' item.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="increase">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary px-2 py-0" title="Increase">+</button>
+                        </form>
+                    </div>
+                </td>
+                <td class="text-end">
+                    <div class="fw-semibold">₹{{ item.unit_price }}</div>
+                </td>
+                <td class="text-end fw-bold">₹{{ item.subtotal }}</td>
+                <td class="text-center">
+                    <form method="POST" action="{% url 'remove_from_cart' item.id %}" onsubmit="return confirm('Remove {{ item.product.name }} from cart?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove item">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="row justify-content-end">
+    <div class="col-md-5 col-lg-4">
+        <div class="card shadow-sm border-0 p-4 bg-white">
+            <h5 class="mb-3 fw-bold">Order Summary</h5>
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">Subtotal</span>
+                <span class="fw-semibold">₹{{ cart_total }}</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">
+                    Delivery Fee
+                    {% if seller_count > 1 %}
+                        <small class="d-block text-muted">({{ seller_count }} bakeries × ₹30)</small>
+                    {% endif %}
+                </span>
+                <span class="fw-semibold">₹{{ delivery_fee }}</span>
+            </div>
+            <hr>
+            <div class="d-flex justify-content-between fw-bold fs-5 mb-4">
+                <span>Estimated Total</span>
+                <span class="text-success">₹{{ grand_total }}</span>
+            </div>
+            <a href="{% url 'checkout' %}" class="btn btn-bakery btn-lg w-100">
+                Proceed to Checkout <i class="fa-solid fa-arrow-right ms-1"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<div class="text-center text-muted py-5 bg-white rounded shadow-sm">
+    <i class="fa-solid fa-cart-arrow-down fa-4x mb-3 text-warning"></i>
+    <h4>Your Cart is Empty</h4>
+    <p class="text-muted mb-4">Looks like you haven't chosen any fresh treats yet.</p>
+    <a href="{% url 'product_list' %}" class="btn btn-bakery btn-lg">Browse Bakery Products</a>
+</div>
+{% endif %}
+{% endblock %}

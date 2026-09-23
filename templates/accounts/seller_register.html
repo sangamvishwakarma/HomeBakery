@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block title %}Become a Seller - HomeBakery{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7 col-lg-6">
+        <div class="card shadow-sm border-0 p-4 bg-white">
+            <div class="text-center mb-4">
+                <i class="fa-solid fa-store fa-3x text-warning mb-2"></i>
+                <h3 class="fw-bold">Start Selling on HomeBakery</h3>
+                <p class="text-muted small">Register your home kitchen or artisan bakery to list products and fulfill local orders.</p>
+            </div>
+
+            <div class="alert alert-light border d-flex align-items-center mb-4 py-2 px-3">
+                <i class="fa-solid fa-user-circle fa-2x text-muted me-3"></i>
+                <div>
+                    <div class="small text-muted">Applying with Account:</div>
+                    <strong>{{ user.username }}</strong> <span class="text-muted small">({{ user.email }})</span>
+                </div>
+            </div>
+
+            <form method="POST" novalidate>
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Business / Bakery Name</label>
+                    {{ form.business_name }}
+                    {% if form.business_name.errors %}
+                        <div class="text-danger small mt-1">{{ form.business_name.errors.0 }}</div>
+                    {% endif %}
+                    <div class="form-text">The public display name for your bakery or kitchen.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">FSSAI License Number <span class="text-muted small">(optional)</span></label>
+                    {{ form.fssai_number }}
+                    {% if form.fssai_number.errors %}
+                        <div class="text-danger small mt-1">{{ form.fssai_number.errors.0 }}</div>
+                    {% endif %}
+                    <div class="form-text">Adds trust and a verified badge to your bakes.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Bakery Contact Phone</label>
+                    {{ form.phone }}
+                    {% if form.phone.errors %}
+                        <div class="text-danger small mt-1">{{ form.phone.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Kitchen / Pickup Address</label>
+                    {{ form.address }}
+                    {% if form.address.errors %}
+                        <div class="text-danger small mt-1">{{ form.address.errors.0 }}</div>
+                    {% endif %}
+                    <div class="form-text">Where orders will be prepared and picked up from.</div>
+                </div>
+
+                <div class="alert alert-info small mb-4">
+                    <i class="fa-solid fa-circle-info me-1"></i>
+                    Your application will be reviewed by our platform admin team. Once approved, you can start listing products immediately.
+                </div>
+
+                <button type="submit" class="btn btn-bakery btn-lg w-100">
+                    <i class="fa-solid fa-paper-plane me-1"></i> Submit Application for Review
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

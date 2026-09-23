@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card shadow-sm p-4">
+            <h3 class="mb-4 text-center">Login</h3>
+            <form method="POST" novalidate>
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Username</label>
+                    {{ form.username }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Password</label>
+                    {{ form.password }}
+                </div>
+
+                {% if form.errors %}
+                    <div class="alert alert-danger">Invalid username or password.</div>
+                {% endif %}
+
+                <button type="submit" class="btn btn-bakery w-100">Login</button>
+            </form>
+            <p class="text-center mt-3">New here? <a href="{% url 'register' %}">Create an account</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

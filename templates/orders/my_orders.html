@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block title %}My Orders - HomeBakery{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fa-solid fa-box text-warning"></i> My Orders</h2>
+    <a href="{% url 'product_list' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-cookie-bite"></i> Browse More Bakes
+    </a>
+</div>
+
+{% if orders %}
+    <div class="row g-4">
+        {% for order in orders %}
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center py-3">
+                    <div>
+                        <span class="fw-bold fs-5 me-2">Order #{{ order.id }}</span>
+                        <span class="text-muted small">Placed on {{ order.order_date|date:"M d, Y h:i A" }}</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        {% if order.payment_status == 'paid' %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 small">
+                                <i class="fa-solid fa-circle-check"></i> Paid Online
+                            </span>
+                        {% else %}
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1 small">
+                                <i class="fa-solid fa-clock"></i> Pay on Delivery
+                            </span>
+                        {% endif %}
+
+                        {% if order.status == 'pending' %}
+                            <span class="badge bg-warning text-dark px-3 py-2">Pending</span>
+                        {% elif order.status == 'preparing' %}
+                            <span class="badge bg-info text-dark px-3 py-2">Preparing with Love</span>
+                        {% elif order.status == 'ready' %}
+                            <span class="badge bg-primary px-3 py-2">Ready for Delivery / Pickup</span>
+                        {% elif order.status == 'delivered' %}
+                            <span class="badge bg-success px-3 py-2">Delivered</span>
+                        {% else %}
+                            <span class="badge bg-secondary px-3 py-2">{{ order.get_status_display }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-7">
+                            <h6 class="text-muted text-uppercase small fw-bold mb-3">
+                                <i class="fa-solid fa-store text-warning"></i> Baker: {{ order.seller.business_name }}
+                            </h6>
+
+                            <div class="list-group list-group-flush mb-3">
+                                {% for item in order.items.all %}
+                                <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ item.product.name }}</strong>
+                                        <span class="badge bg-light text-dark border ms-1">{{ item.formatted_quantity }}</span>
+                                        {% if item.customization_notes %}
+                                            <div class="small text-muted"><i class="fa-solid fa-wand-magic-sparkles text-warning"></i> Note: {{ item.customization_notes }}</div>
+                                        {% endif %}
+                                        <div class="mt-1">
+                                            <a href="{% url 'product_detail' item.product.id %}" class="small text-decoration-none">
+                                                <i class="fa-solid fa-star text-warning"></i> Review this bake
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <span class="fw-semibold">₹{{ item.subtotal }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="col-md-5 border-start-md ps-md-4">
+                            <div class="bg-light p-3 rounded mb-3">
+                                <div class="small mb-1">
+                                    <i class="fa-solid fa-calendar-check text-success me-1"></i>
+                                    <strong>Expected Delivery:</strong>
+                                    <div class="ps-3">{{ order.delivery_date|date:"l, M d, Y - h:i A" }}</div>
+                                </div>
+                                <hr class="my-2">
+                                <div class="small mb-1">
+                                    <i class="fa-solid fa-location-dot text-danger me-1"></i>
+                                    <strong>Delivery Address:</strong>
+                                    <div class="ps-3">{{ order.delivery_address }}</div>
+                                </div>
+                                <hr class="my-2">
+                                <div class="small">
+                                    <i class="fa-solid fa-credit-card text-primary me-1"></i>
+                                    <strong>Payment:</strong> {{ order.get_payment_method_display }}
+                                    {% if order.transaction_id %}
+                                        <div class="small text-muted ps-3">Txn ID: <code>{{ order.transaction_id }}</code></div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold fs-5">Total:</span>
+                                <span class="fw-bold fs-4 text-success">₹{{ order.total_amount }}</span>
+                            </div>
+                            <div class="text-end mt-2 d-flex justify-content-end gap-2">
+                                <a href="{% url 'order_detail' order.id %}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fa-solid fa-eye"></i> Details
+                                </a>
+                                <a href="{% url 'order_invoice' order.id %}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                    <i class="fa-solid fa-print"></i> Print Bill
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="text-center py-5 bg-white rounded shadow-sm">
+        <i class="fa-solid fa-box-open fa-3x text-muted mb-3"></i>
+        <h4>No Orders Yet</h4>
+        <p class="text-muted">You haven't placed any bakery orders yet. Discover fresh cookies, cakes, and artisanal breads!</p>
+        <a href="{% url 'product_list' %}" class="btn btn-bakery">Explore Products</a>
+    </div>
+{% endif %}
+{% endblock %}
+

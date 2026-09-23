@@ -1,0 +1,344 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard - HomeBakery{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1"><i class="fa-solid fa-gauge-high text-primary"></i> Platform Admin Portal</h2>
+        <p class="text-muted mb-0">Overview of bakery registrations, platform orders, and marketplace health.</p>
+    </div>
+    <div class="d-flex gap-2 mt-2 mt-md-0">
+        <a href="/admin/" target="_blank" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-screwdriver-wrench"></i> Django Backend Admin
+        </a>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-sm-6">
+        <div class="card shadow-sm border-0 p-3 text-center bg-white">
+            <div class="text-muted small mb-1"><i class="fa-solid fa-hourglass-half text-warning"></i> Pending Approvals</div>
+            <h3 class="fw-bold text-warning mb-0">{{ pending_sellers_count }}</h3>
+            <small class="text-muted">Bakeries waiting</small>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="card shadow-sm border-0 p-3 text-center bg-white">
+            <div class="text-muted small mb-1"><i class="fa-solid fa-store text-success"></i> Approved Bakeries</div>
+            <h3 class="fw-bold text-success mb-0">{{ approved_sellers_count }}</h3>
+            <small class="text-muted">Out of {{ total_sellers }} total</small>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="card shadow-sm border-0 p-3 text-center bg-white">
+            <div class="text-muted small mb-1"><i class="fa-solid fa-box text-primary"></i> Platform Orders</div>
+            <h3 class="fw-bold text-primary mb-0">{{ total_orders }}</h3>
+            <small class="text-muted">{{ delivered_orders_count }} delivered</small>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="card shadow-sm border-0 p-3 text-center bg-white">
+            <div class="text-muted small mb-1"><i class="fa-solid fa-indian-rupee-sign text-success"></i> Delivered Volume</div>
+            <h3 class="fw-bold text-success mb-0">₹{{ total_revenue }}</h3>
+            <small class="text-muted">{{ total_customers }} customers</small>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs Navigation -->
+<ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending-panel" type="button" role="tab">
+            <i class="fa-solid fa-bell text-warning"></i> Pending Approvals
+            {% if pending_sellers_count %}
+                <span class="badge bg-warning text-dark ms-1">{{ pending_sellers_count }}</span>
+            {% endif %}
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="sellers-tab" data-bs-toggle="tab" data-bs-target="#sellers-panel" type="button" role="tab">
+            <i class="fa-solid fa-store"></i> All Bakeries ({{ all_sellers.count }})
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders-panel" type="button" role="tab">
+            <i class="fa-solid fa-clipboard-list"></i> Platform Orders ({{ all_orders.count }})
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-panel" type="button" role="tab">
+            <i class="fa-solid fa-users"></i> Users ({{ total_users }})
+        </button>
+    </li>
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content" id="adminTabsContent">
+    <!-- 1. Pending Sellers Tab -->
+    <div class="tab-pane fade show active" id="pending-panel" role="tabpanel">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0"><i class="fa-solid fa-clock-rotate-left text-warning"></i> Bakeries Awaiting Review</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Bakery / Business</th>
+                                <th>Owner</th>
+                                <th>Contact &amp; Location</th>
+                                <th>FSSAI License</th>
+                                <th>Applied On</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for seller in pending_sellers %}
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">{{ seller.business_name }}</div>
+                                </td>
+                                <td>
+                                    <div>{{ seller.user.username }}</div>
+                                    <small class="text-muted">{{ seller.user.email }}</small>
+                                </td>
+                                <td>
+                                    <div><i class="fa-solid fa-phone small text-muted"></i> {{ seller.user.phone|default:"N/A" }}</div>
+                                    <small class="text-muted">{{ seller.user.address|truncatewords:8|default:"No address given" }}</small>
+                                </td>
+                                <td>
+                                    {% if seller.fssai_number %}
+                                        <span class="badge bg-light text-dark border">{{ seller.fssai_number }}</span>
+                                    {% else %}
+                                        <span class="text-muted small">Not provided</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ seller.created_at|date:"M d, Y" }}</td>
+                                <td class="text-end">
+                                    <div class="d-inline-flex gap-2">
+                                        <form method="POST" action="{% url 'admin_approve_seller' seller.id %}">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-success">
+                                                <i class="fa-solid fa-check"></i> Approve
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{% url 'admin_reject_seller' seller.id %}" onsubmit="return confirm('Reject {{ seller.business_name }}?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="fa-solid fa-xmark"></i> Reject
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    <i class="fa-solid fa-circle-check text-success fa-2x mb-2 d-block"></i>
+                                    All seller registrations have been reviewed. No pending approvals!
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. All Sellers Tab -->
+    <div class="tab-pane fade" id="sellers-panel" role="tabpanel">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0"><i class="fa-solid fa-store text-primary"></i> All Registered Bakeries</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Bakery Name</th>
+                                <th>Owner</th>
+                                <th>Phone</th>
+                                <th>Products</th>
+                                <th>Status</th>
+                                <th class="text-end">Manage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for seller in all_sellers %}
+                            <tr>
+                                <td class="fw-bold">{{ seller.business_name }}</td>
+                                <td>{{ seller.user.username }}</td>
+                                <td>{{ seller.user.phone }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ seller.products.count }}</span></td>
+                                <td>
+                                    {% if seller.status == 'approved' %}
+                                        <span class="badge bg-success">Approved</span>
+                                    {% elif seller.status == 'pending' %}
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Rejected</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-inline-flex gap-1">
+                                        {% if seller.status != 'approved' %}
+                                            <form method="POST" action="{% url 'admin_approve_seller' seller.id %}">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-outline-success" title="Approve">
+                                                    <i class="fa-solid fa-check"></i>
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                        {% if seller.status != 'rejected' %}
+                                            <form method="POST" action="{% url 'admin_reject_seller' seller.id %}">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Reject">
+                                                    <i class="fa-solid fa-ban"></i>
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="6" class="text-center text-muted py-4">No bakeries registered yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Platform Orders Tab -->
+    <div class="tab-pane fade" id="orders-panel" role="tabpanel">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0"><i class="fa-solid fa-clipboard-list text-success"></i> Recent Platform Orders</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Customer</th>
+                                <th>Bakery</th>
+                                <th>Delivery Date</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th class="text-end">View</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in all_orders %}
+                            <tr>
+                                <td class="fw-bold">#{{ order.id }}</td>
+                                <td>{{ order.customer.username }}</td>
+                                <td>{{ order.seller.business_name }}</td>
+                                <td>{{ order.delivery_date|date:"M d, Y h:i A" }}</td>
+                                <td class="fw-bold text-success">₹{{ order.total_amount }}</td>
+                                <td>
+                                    {% if order.status == 'pending' %}
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    {% elif order.status == 'preparing' %}
+                                        <span class="badge bg-info text-dark">Preparing</span>
+                                    {% elif order.status == 'ready' %}
+                                        <span class="badge bg-primary">Ready</span>
+                                    {% elif order.status == 'delivered' %}
+                                        <span class="badge bg-success">Delivered</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ order.get_status_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-outline-secondary">
+                                        Details
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="7" class="text-center text-muted py-4">No orders placed on platform yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Platform Users Tab -->
+    <div class="tab-pane fade" id="users-panel" role="tabpanel">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0"><i class="fa-solid fa-users text-primary"></i> Registered Users</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Phone</th>
+                                <th>Joined</th>
+                                <th>Status</th>
+                                <th class="text-end">Toggle</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for u in all_users %}
+                            <tr>
+                                <td class="fw-bold">
+                                    {{ u.username }}
+                                    {% if u.is_superuser %}
+                                        <span class="badge bg-dark">Superuser</span>
+                                    {% elif u.is_staff %}
+                                        <span class="badge bg-secondary">Staff</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ u.email|default:"—" }}</td>
+                                <td>
+                                    {% if u.role == 'seller' %}
+                                        <span class="badge bg-warning text-dark">Seller</span>
+                                    {% elif u.role == 'customer' %}
+                                        <span class="badge bg-info text-dark">Customer</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-dark border">Admin</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ u.phone|default:"—" }}</td>
+                                <td>{{ u.date_joined|date:"M d, Y" }}</td>
+                                <td>
+                                    {% if u.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if u != request.user %}
+                                    <form method="POST" action="{% url 'admin_toggle_user_status' u.id %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                                            {% if u.is_active %}Deactivate{% else %}Activate{% endif %}
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

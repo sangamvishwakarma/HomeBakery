@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+{% block title %}Seller Dashboard - HomeBakery{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="fa-solid fa-store text-warning"></i> {{ seller.business_name }}</h2>
+        <span class="badge {% if seller.status == 'approved' %}bg-success{% elif seller.status == 'pending' %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+            {{ seller.get_status_display }}
+        </span>
+        {% if seller.fssai_number %}
+            <small class="text-muted ms-2">FSSAI: {{ seller.fssai_number }}</small>
+        {% endif %}
+    </div>
+    {% if seller.status == 'approved' %}
+        <a href="{% url 'add_product' %}" class="btn btn-bakery">
+            <i class="fa-solid fa-plus"></i> Add Product
+        </a>
+    {% endif %}
+</div>
+
+{% if seller.status == 'pending' %}
+    <div class="alert alert-warning py-4 text-center">
+        <i class="fa-solid fa-hourglass-half fa-3x mb-3 text-warning"></i>
+        <h4>Account Under Review</h4>
+        <p class="mb-0">Your seller account is awaiting administrator approval. You will be able to list delicious bakes and manage orders once approved!</p>
+    </div>
+{% elif seller.status == 'rejected' %}
+    <div class="alert alert-danger py-4 text-center">
+        <i class="fa-solid fa-circle-xmark fa-3x mb-3 text-danger"></i>
+        <h4>Application Rejected</h4>
+        <p class="mb-0">Your seller registration could not be approved at this time. Please contact support or update your bakery credentials.</p>
+    </div>
+{% else %}
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card p-3 text-center shadow-sm border-0 bg-white">
+            <div class="text-muted small mb-1"><i class="fa-solid fa-cake-candles"></i> Products Listed</div>
+            <h3 class="fw-bold mb-0">{{ total_products }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3 text-center shadow-sm border-0 bg-white">
+            <div class="text-muted small mb-1"><i class="fa-solid fa-bell"></i> Pending Orders</div>
+            <h3 class="fw-bold text-warning mb-0">{{ pending_orders }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3 text-center shadow-sm border-0 bg-white">
+            <div class="text-muted small mb-1"><i class="fa-solid fa-indian-rupee-sign"></i> Delivered Earnings</div>
+            <h3 class="fw-bold text-success mb-0">₹{{ total_earnings }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3 text-center shadow-sm border-0 bg-white">
+            <div class="text-muted small mb-1"><i class="fa-solid fa-star text-warning"></i> Avg Rating</div>
+            <h3 class="fw-bold mb-0">
+                {% if avg_rating %}
+                    {{ avg_rating }} <i class="fa-solid fa-star text-warning fs-5"></i>
+                {% else %}
+                    <span class="text-muted fs-5">N/A</span>
+                {% endif %}
+            </h3>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3">
+        <h5 class="mb-0"><i class="fa-solid fa-clipboard-list text-primary"></i> Customer Orders</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Customer</th>
+                        <th>Delivery Target</th>
+                        <th>Items &amp; Details</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for order in orders %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'order_detail' order.id %}" class="fw-bold text-decoration-none">
+                                #{{ order.id }}
+                            </a>
+                        </td>
+                        <td>
+                            <div class="fw-semibold">{{ order.customer.username }}</div>
+                            <small class="text-muted"><i class="fa-solid fa-phone"></i> {{ order.contact_number }}</small>
+                        </td>
+                        <td>
+                            <span class="fw-semibold">{{ order.delivery_date|date:"M d, Y" }}</span>
+                            <br><small class="text-muted">{{ order.delivery_date|date:"h:i A" }}</small>
+                        </td>
+                        <td>
+                            <small>
+                                {% for item in order.items.all %}
+                                    <div class="mb-1">
+                                        <span class="badge bg-light text-dark border">{{ item.formatted_quantity }}x</span>
+                                        <strong>{{ item.display_name }}</strong>
+                                        {% if item.customization_notes %}
+                                            <span class="badge bg-light text-dark border">Note: {{ item.customization_notes }}</span>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </small>
+                        </td>
+                        <td>
+                            <div class="fw-bold">₹{{ order.total_amount }}</div>
+                            <div class="mt-1">
+                                {% if order.payment_status == 'paid' %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0 small"><i class="fa-solid fa-check"></i> Paid Online</span>
+                                {% else %}
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-0 small"><i class="fa-solid fa-clock"></i> COD Due</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            {% if order.status == 'pending' %}
+                                <span class="badge bg-warning text-dark">Pending</span>
+                            {% elif order.status == 'preparing' %}
+                                <span class="badge bg-info text-dark">Preparing</span>
+                            {% elif order.status == 'ready' %}
+                                <span class="badge bg-primary">Ready</span>
+                            {% elif order.status == 'delivered' %}
+                                <span class="badge bg-success">Delivered</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ order.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <form method="POST" action="{% url 'update_order_status' order.id %}" class="d-flex gap-1 mb-1">
+                                {% csrf_token %}
+                                <select name="status" class="form-select form-select-sm" style="min-width: 110px;">
+                                    <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Pending</option>
+                                    <option value="preparing" {% if order.status == 'preparing' %}selected{% endif %}>Preparing</option>
+                                    <option value="ready" {% if order.status == 'ready' %}selected{% endif %}>Ready</option>
+                                    <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>Delivered</option>
+                                    <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-bakery">Save</button>
+                            </form>
+                            <a href="{% url 'order_invoice' order.id %}" target="_blank" class="btn btn-sm btn-outline-primary w-100">
+                                <i class="fa-solid fa-print"></i> Print Bill
+                            </a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted py-4">No orders received yet.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0"><i class="fa-solid fa-boxes-stacked text-success"></i> My Products ({{ total_products }})</h5>
+    <a href="{% url 'add_product' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="fa-solid fa-plus"></i> Add Another Product
+    </a>
+</div>
+
+<div class="row g-3">
+    {% for product in products %}
+    <div class="col-md-4 col-sm-6">
+        <div class="card shadow-sm h-100 border-0">
+            {% if product.image %}
+                <img src="{{ product.image.url }}" class="card-img-top" style="height:170px; object-fit:cover;" alt="{{ product.name }}">
+            {% else %}
+                <div class="bg-light d-flex align-items-center justify-content-center" style="height:170px;">
+                    <i class="fa-solid fa-cake-candles fa-3x text-muted"></i>
+                </div>
+            {% endif %}
+            <div class="card-body d-flex flex-column p-3">
+                <div class="d-flex justify-content-between align-items-start mb-1">
+                    <h6 class="card-title fw-bold mb-0">{{ product.display_name }}</h6>
+                    <span class="fw-bold text-success">₹{{ product.price }}</span>
+                </div>
+                <div class="small text-muted mb-2">
+                    <span class="badge bg-light text-dark border">{{ product.category.name }}</span>
+                    {% if product.is_available %}
+                        <span class="badge bg-success">Active</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Hidden</span>
+                    {% endif %}
+                    {% if product.is_customizable %}
+                        <span class="badge bg-info text-dark">Customizable</span>
+                    {% endif %}
+                </div>
+                <p class="small text-muted mb-3 flex-grow-1">{{ product.description|truncatewords:10 }}</p>
+                <div class="d-flex gap-1 justify-content-between align-items-center pt-2 border-top">
+                    <a href="{% url 'edit_product' product.id %}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fa-solid fa-pen"></i> Edit
+                    </a>
+                    <form method="POST" action="{% url 'toggle_availability' product.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm {% if product.is_available %}btn-outline-warning{% else %}btn-outline-success{% endif %}">
+                            {% if product.is_available %}<i class="fa-solid fa-eye-slash"></i> Hide{% else %}<i class="fa-solid fa-eye"></i> Show{% endif %}
+                        </button>
+                    </form>
+                    <form method="POST" action="{% url 'delete_product' product.id %}" class="d-inline" onsubmit="return confirm('Are you sure you want to permanently delete \'{{ product.name }}\'?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+        <div class="col-12 text-center text-muted py-5 bg-white rounded shadow-sm">
+            <i class="fa-solid fa-cookie-bite fa-3x mb-3 text-warning"></i>
+            <p class="lead mb-2">You haven't added any products yet.</p>
+            <a href="{% url 'add_product' %}" class="btn btn-bakery">Add Your First Product</a>
+        </div>
+    {% endfor %}
+</div>
+
+{% endif %}
+{% endblock %}

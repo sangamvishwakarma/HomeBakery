@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bill - Order #{{ order.id }} - HomeBakery</title>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #d97706;
+            --primary-dark: #b45309;
+            --text-main: #1f2937;
+            --text-muted: #4b5563;
+            --border-color: #e5e7eb;
+            --bg-light: #f9fafb;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: var(--text-main);
+            background-color: #f3f4f6;
+            line-height: 1.5;
+            padding: 20px;
+        }
+
+        .action-bar {
+            max-width: 820px;
+            margin: 0 auto 20px auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 18px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background-color: #d97706;
+            color: #ffffff;
+        }
+        .btn-primary:hover {
+            background-color: #b45309;
+        }
+
+        .btn-secondary {
+            background-color: #ffffff;
+            color: #374151;
+            border-color: #d1d5db;
+        }
+        .btn-secondary:hover {
+            background-color: #f3f4f6;
+        }
+
+        .invoice-card {
+            max-width: 820px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 40px;
+        }
+
+        /* Invoice Header */
+        .invoice-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding-bottom: 24px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .brand-section h1 {
+            font-size: 26px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 4px;
+        }
+
+        .brand-tagline {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .invoice-meta {
+            text-align: right;
+        }
+
+        .invoice-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: #111827;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .meta-row {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+
+        .meta-row strong {
+            color: var(--text-main);
+        }
+
+        /* Parties section */
+        .invoice-parties {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 24px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .party-box h3 {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .party-name {
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: #111827;
+        }
+
+        .party-detail {
+            font-size: 13.5px;
+            color: #374151;
+            margin-bottom: 3px;
+        }
+
+        /* Payment Status Banner */
+        .payment-banner {
+            margin: 20px 0;
+            padding: 14px 18px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+        }
+
+        .banner-paid {
+            background-color: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            color: #065f46;
+        }
+
+        .banner-pending {
+            background-color: #fffbeb;
+            border: 1px solid #fde68a;
+            color: #92400e;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-weight: 700;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-paid {
+            background-color: #10b981;
+            color: #ffffff;
+        }
+
+        .badge-pending {
+            background-color: #f59e0b;
+            color: #ffffff;
+        }
+
+        /* Table */
+        .table-container {
+            margin: 24px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th {
+            background-color: var(--bg-light);
+            color: #374151;
+            font-weight: 700;
+            text-align: left;
+            padding: 12px 14px;
+            border-bottom: 2px solid var(--border-color);
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 14px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: top;
+        }
+
+        .item-title {
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .item-note {
+            font-size: 12.5px;
+            color: #6b7280;
+            margin-top: 3px;
+        }
+
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+
+        /* Totals */
+        .totals-section {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 10px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .totals-table {
+            width: 320px;
+        }
+
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 14px;
+            color: #4b5563;
+        }
+
+        .totals-row.grand-total {
+            border-top: 2px solid var(--border-color);
+            margin-top: 8px;
+            padding-top: 10px;
+            font-size: 18px;
+            font-weight: 800;
+            color: #111827;
+        }
+
+        .grand-total .amount {
+            color: var(--primary-color);
+        }
+
+        /* Footer */
+        .invoice-footer {
+            padding-top: 24px;
+            text-align: center;
+            font-size: 12.5px;
+            color: #6b7280;
+        }
+
+        .footer-note {
+            margin-bottom: 8px;
+            font-style: italic;
+        }
+
+        /* Print media styles */
+        @media print {
+            body {
+                background: #ffffff;
+                padding: 0;
+                color: #000000;
+            }
+
+            .action-bar {
+                display: none !important;
+            }
+
+            .invoice-card {
+                max-width: 100%;
+                margin: 0;
+                padding: 10mm 15mm;
+                box-shadow: none;
+                border: none;
+            }
+
+            @page {
+                size: A4 portrait;
+                margin: 10mm 10mm 10mm 10mm;
+            }
+
+            .payment-banner {
+                border: 1px solid #9ca3af !important;
+                background-color: #f9fafb !important;
+                color: #111827 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .status-badge {
+                border: 1px solid #111827;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            th {
+                background-color: #f3f4f6 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Action Bar (Hidden when printed) -->
+    <div class="action-bar no-print">
+        {% if is_seller %}
+            <a href="{% url 'seller_dashboard' %}" class="btn btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i> Back to Seller Dashboard
+            </a>
+        {% else %}
+            <a href="{% url 'order_detail' order.id %}" class="btn btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i> Back to Order #{{ order.id }}
+            </a>
+        {% endif %}
+
+        <div style="display: flex; gap: 10px;">
+            <button onclick="window.print()" class="btn btn-primary">
+                <i class="fa-solid fa-print"></i> Print Bill / Invoice
+            </button>
+        </div>
+    </div>
+
+    <!-- Printable Invoice Container -->
+    <div class="invoice-card" id="printableInvoice">
+        <!-- Header -->
+        <div class="invoice-header">
+            <div class="brand-section">
+                <h1><i class="fa-solid fa-cake-candles"></i> HomeBakery</h1>
+                <div class="brand-tagline">Artisanal Bakery &amp; Homemade Delights</div>
+            </div>
+            <div class="invoice-meta">
+                <div class="invoice-title">Tax Invoice / Bill</div>
+                <div class="meta-row"><strong>Invoice No:</strong> {{ order.invoice_number }}</div>
+                <div class="meta-row"><strong>Order ID:</strong> #{{ order.id }}</div>
+                <div class="meta-row"><strong>Date:</strong> {{ order.order_date|date:"d M Y, h:i A" }}</div>
+            </div>
+        </div>
+
+        <!-- Baker and Customer Info -->
+        <div class="invoice-parties">
+            <div class="party-box">
+                <h3>Sold By (Baker / Kitchen):</h3>
+                <div class="party-name">{{ order.seller.business_name }}</div>
+                <div class="party-detail"><i class="fa-solid fa-user-circle"></i> {{ order.seller.user.get_full_name|default:order.seller.user.username }}</div>
+                <div class="party-detail"><i class="fa-solid fa-phone"></i> {{ order.seller.user.phone }}</div>
+                {% if order.seller.user.email %}
+                    <div class="party-detail"><i class="fa-solid fa-envelope"></i> {{ order.seller.user.email }}</div>
+                {% endif %}
+                {% if order.seller.fssai_number %}
+                    <div class="party-detail"><strong>FSSAI Lic. No:</strong> {{ order.seller.fssai_number }}</div>
+                {% endif %}
+                <div class="party-detail">{{ order.seller.user.address }}</div>
+            </div>
+
+            <div class="party-box">
+                <h3>Billed &amp; Delivered To:</h3>
+                <div class="party-name">{{ order.customer.get_full_name|default:order.customer.username }}</div>
+                <div class="party-detail"><i class="fa-solid fa-phone"></i> {{ order.contact_number }}</div>
+                {% if order.customer.email %}
+                    <div class="party-detail"><i class="fa-solid fa-envelope"></i> {{ order.customer.email }}</div>
+                {% endif %}
+                <div class="party-detail" style="margin-top: 6px;">
+                    <strong>Delivery Address:</strong><br>
+                    {{ order.delivery_address }}
+                </div>
+                <div class="party-detail" style="margin-top: 4px;">
+                    <strong>Scheduled Delivery:</strong><br>
+                    {{ order.delivery_date|date:"l, d M Y - h:i A" }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Status Banner -->
+        <div class="payment-banner {% if order.payment_status == 'paid' %}banner-paid{% else %}banner-pending{% endif %}">
+            <div>
+                <strong>Payment Method:</strong> {{ order.get_payment_method_display }}
+                {% if order.transaction_id %}
+                    &nbsp;|&nbsp; <strong>Txn ID:</strong> {{ order.transaction_id }}
+                {% endif %}
+                {% if order.paid_at %}
+                    &nbsp;|&nbsp; <strong>Paid At:</strong> {{ order.paid_at|date:"d M Y, h:i A" }}
+                {% endif %}
+            </div>
+            <div>
+                {% if order.payment_status == 'paid' %}
+                    <span class="status-badge badge-paid"><i class="fa-solid fa-check-circle"></i> Paid Online</span>
+                {% else %}
+                    <span class="status-badge badge-pending"><i class="fa-solid fa-clock"></i> Cash on Delivery</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Items Table -->
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 45px;" class="text-center">#</th>
+                        <th>Item Description</th>
+                        <th style="width: 120px;" class="text-right">Unit Price</th>
+                        <th style="width: 100px;" class="text-center">Qty</th>
+                        <th style="width: 110px;" class="text-right">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in order.items.all %}
+                    <tr>
+                        <td class="text-center">{{ forloop.counter }}</td>
+                        <td>
+                            <div class="item-title">{{ item.display_name }}</div>
+                            {% if item.customization_notes %}
+                                <div class="item-note"><strong>Customization:</strong> {{ item.customization_notes }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="text-right">₹{{ item.price_at_order }}</td>
+                        <td class="text-center fw-bold">{{ item.formatted_quantity }}</td>
+                        <td class="text-right fw-bold">₹{{ item.subtotal }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Totals -->
+        <div class="totals-section">
+            <div class="totals-table">
+                <div class="totals-row">
+                    <span>Items Subtotal</span>
+                    <span>₹{{ items_subtotal }}</span>
+                </div>
+                <div class="totals-row">
+                    <span>Delivery Charges</span>
+                    <span>₹{{ delivery_fee }}</span>
+                </div>
+                <div class="totals-row grand-total">
+                    <span>Grand Total</span>
+                    <span class="amount">₹{{ order.total_amount }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="invoice-footer">
+            <p class="footer-note">Thank you for supporting your local home baker! Made fresh with passion and love.</p>
+            <p>For any inquiries regarding this order, please contact <strong>{{ order.seller.business_name }}</strong> at <strong>{{ order.seller.user.phone }}</strong>.</p>
+            <p style="margin-top: 6px; font-size: 11px;">This is a computer-generated tax invoice and does not require a physical signature.</p>
+        </div>
+    </div>
+
+    <!-- Auto Print Script if ?print=1 in URL -->
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('print') === '1' || urlParams.get('print') === 'true') {
+                window.print();
+            }
+        });
+    </script>
+</body>
+</html>
+

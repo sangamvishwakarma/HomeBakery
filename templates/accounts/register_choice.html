@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Register{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-8 text-center">
+        <h2 class="mb-4">How do you want to join?</h2>
+        <p class="text-muted mb-5">You must register before you can order or sell products.</p>
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card h-100 shadow-sm p-4">
+                    <i class="fa-solid fa-basket-shopping fa-3x mb-3" style="color:#b5651d;"></i>
+                    <h4>I want to Order</h4>
+                    <p class="text-muted">Browse homemade bakes and place orders.</p>
+                    <a href="{% url 'customer_register' %}" class="btn btn-bakery mt-auto">Register as Customer</a>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100 shadow-sm p-4">
+                    <i class="fa-solid fa-store fa-3x mb-3" style="color:#b5651d;"></i>
+                    <h4>I want to Sell</h4>
+                    <p class="text-muted">List your homemade products and receive orders.</p>
+                    <a href="{% url 'seller_register' %}" class="btn btn-bakery mt-auto">Register as Seller</a>
+                </div>
+            </div>
+        </div>
+        <p class="mt-4">Already have an account? <a href="{% url 'login' %}">Login here</a></p>
+    </div>
+</div>
+{% endblock %}

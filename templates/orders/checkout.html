@@ -1,0 +1,390 @@
+{% extends 'base.html' %}
+{% block title %}Checkout - HomeBakery{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <h2 class="mb-4"><i class="fa-solid fa-receipt text-warning"></i> Checkout</h2>
+
+        <div id="checkoutAlert" class="alert alert-danger d-none mb-4" role="alert"></div>
+
+        <div class="row">
+            <div class="col-md-7">
+                <div class="card shadow-sm border-0 p-4 mb-4">
+                    <h5 class="mb-3 fw-bold"><i class="fa-solid fa-location-dot text-danger me-2"></i> Delivery Details</h5>
+                    <form method="POST" id="checkoutForm" action="{% url 'checkout' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Delivery Address</label>
+                            <textarea name="delivery_address" id="deliveryAddress" class="form-control" rows="3" required placeholder="Full street address, apartment/flat number, city, pincode">{{ user.address }}</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Contact Number</label>
+                            <input type="text" name="contact_number" id="contactNumber" class="form-control" value="{{ user.phone }}" required placeholder="10-digit mobile number">
+                        </div>
+
+                        <h5 class="mt-4 mb-3 fw-bold"><i class="fa-solid fa-credit-card text-primary me-2"></i> Payment Method</h5>
+
+                        <div class="list-group mb-4">
+                            <label class="list-group-item list-group-item-action d-flex align-items-center gap-3 p-3">
+                                <input class="form-check-input flex-shrink-0" type="radio" name="payment_method" value="cod" checked>
+                                <i class="fa-solid fa-money-bill-wave fa-xl text-success"></i>
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold">Cash on Delivery (COD)</div>
+                                    <small class="text-muted">Pay in cash or UPI directly when your order is delivered</small>
+                                </div>
+                                <span class="badge bg-light text-dark border">Zero Extra Fees</span>
+                            </label>
+
+                            <label class="list-group-item list-group-item-action d-flex align-items-center gap-3 p-3">
+                                <input class="form-check-input flex-shrink-0" type="radio" name="payment_method" value="upi">
+                                <i class="fa-solid fa-mobile-screen-button fa-xl text-primary"></i>
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold">UPI / Instant Pay</div>
+                                    <small class="text-muted">Google Pay, PhonePe, Paytm, BHIM</small>
+                                </div>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">Instant</span>
+                            </label>
+
+                            <label class="list-group-item list-group-item-action d-flex align-items-center gap-3 p-3">
+                                <input class="form-check-input flex-shrink-0" type="radio" name="payment_method" value="card">
+                                <i class="fa-solid fa-credit-card fa-xl text-info"></i>
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold">Credit / Debit Card</div>
+                                    <small class="text-muted">Visa, MasterCard, RuPay, Maestro</small>
+                                </div>
+                                <span class="badge bg-light text-dark border">Secure 256-bit</span>
+                            </label>
+
+                            <label class="list-group-item list-group-item-action d-flex align-items-center gap-3 p-3">
+                                <input class="form-check-input flex-shrink-0" type="radio" name="payment_method" value="netbanking">
+                                <i class="fa-solid fa-building-columns fa-xl text-warning"></i>
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold">Net Banking</div>
+                                    <small class="text-muted">SBI, HDFC, ICICI, Axis &amp; 50+ Banks</small>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="p-3 bg-light rounded mb-3 border">
+                            <div class="d-flex align-items-center gap-2 text-muted small">
+                                <i class="fa-solid fa-shield-halved text-success fa-lg"></i>
+                                <span>Payments are verified securely with 256-bit encryption. Print bill and receipt available immediately upon order.</span>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="submitOrderBtn" class="btn btn-bakery btn-lg w-100 py-3 shadow-sm fw-bold">
+                            <span id="btnText">Place Order (Cash on Delivery) — ₹{{ grand_total }}</span>
+                            <span id="btnSpinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status"></span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-md-5">
+                <div class="card shadow-sm border-0 p-4 sticky-top" style="top: 20px;">
+                    <h5 class="mb-3 fw-bold"><i class="fa-solid fa-basket-shopping text-warning me-2"></i> Order Summary</h5>
+                    <div class="cart-summary-items mb-3" style="max-height: 280px; overflow-y: auto;">
+                        {% for item in cart_items %}
+                        <div class="d-flex justify-content-between align-items-start mb-3 pb-2 border-bottom">
+                            <div>
+                                <div class="fw-semibold">
+                                    {{ item.product.display_name }}
+                                </div>
+                                <small class="text-muted">
+                                    Qty: {{ item.formatted_quantity }} × ₹{{ item.unit_price }}
+                                </small>
+                                {% if item.customization_notes %}
+                                    <div class="small text-muted font-italic"><i class="fa-solid fa-pen-nib"></i> {{ item.customization_notes }}</div>
+                                {% endif %}
+                                <div class="small text-secondary"><i class="fa-solid fa-store"></i> {{ item.product.seller.business_name }}</div>
+                            </div>
+                            <span class="fw-bold text-dark">₹{{ item.subtotal }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="d-flex justify-content-between mb-2 text-muted">
+                        <span>Subtotal</span>
+                        <span>₹{{ cart_total }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2 text-muted">
+                        <span>Delivery Charges</span>
+                        <span>₹{{ delivery_fee }}</span>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between fw-bold fs-5 mb-2">
+                        <span>Grand Total</span>
+                        <span class="text-success">₹{{ grand_total }}</span>
+                    </div>
+                    <small class="text-muted text-center d-block">Includes all applicable fees and taxes</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Test Gateway / Sandbox Modal (for 1-click test simulation in development) -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title fw-bold" id="paymentModalLabel">
+                    <i class="fa-solid fa-credit-card me-2"></i> Payment Gateway Simulator
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="closeModalBtn"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="text-center mb-3">
+                    <div class="badge bg-primary-subtle text-primary px-3 py-2 fs-6 mb-2">
+                        Razorpay Test Sandbox
+                    </div>
+                    <h3 class="fw-bold text-dark mb-1">₹<span id="modalAmount">{{ grand_total }}</span></h3>
+                    <p class="text-muted small">Paying to: <strong>HomeBakery Marketplace</strong></p>
+                </div>
+
+                <div class="card bg-light border-0 p-3 mb-3 small">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Gateway Order ID:</span>
+                        <code id="modalOrderId" class="text-dark">order_test_...</code>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Payment Method:</span>
+                        <strong id="modalMethod" class="text-capitalize">UPI</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Simulated Txn ID:</span>
+                        <code id="modalPayId" class="text-dark">pay_test_...</code>
+                    </div>
+                </div>
+
+                <p class="text-muted small text-center mb-4">
+                    Choose an action to simulate the gateway callback. A successful payment will verify the HMAC signature and create your order.
+                </p>
+
+                <div class="d-grid gap-2">
+                    <button type="button" id="confirmSuccessBtn" class="btn btn-success py-2 fw-bold">
+                        <i class="fa-solid fa-check-circle me-1"></i> Simulate Payment Success
+                    </button>
+                    <button type="button" id="simulateFailBtn" class="btn btn-outline-danger py-2">
+                        <i class="fa-solid fa-xmark me-1"></i> Simulate Payment Failure
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Razorpay Checkout Script -->
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<script>
+    const form = document.getElementById('checkoutForm');
+    const radios = document.querySelectorAll('input[name="payment_method"]');
+    const btnText = document.getElementById('btnText');
+    const btnSpinner = document.getElementById('btnSpinner');
+    const submitBtn = document.getElementById('submitOrderBtn');
+    const alertBox = document.getElementById('checkoutAlert');
+    const grandTotal = "{{ grand_total }}";
+
+    let currentPaymentData = null;
+    const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+
+    function updateButtonLabel() {
+        const checked = document.querySelector('input[name="payment_method"]:checked');
+        const val = checked ? checked.value : 'cod';
+        if (val === 'cod') {
+            btnText.textContent = `Place Order (Cash on Delivery) — ₹${grandTotal}`;
+            submitBtn.className = "btn btn-bakery btn-lg w-100 py-3 shadow-sm fw-bold";
+        } else {
+            const labels = { 'upi': 'UPI', 'card': 'Credit / Debit Card', 'netbanking': 'Net Banking' };
+            btnText.textContent = `Pay ₹${grandTotal} via ${labels[val] || 'Online Payment'}`;
+            submitBtn.className = "btn btn-primary btn-lg w-100 py-3 shadow-sm fw-bold";
+        }
+    }
+
+    radios.forEach(r => r.addEventListener('change', updateButtonLabel));
+    updateButtonLabel();
+
+    function showAlert(msg) {
+        alertBox.textContent = msg;
+        alertBox.classList.remove('d-none');
+        alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function hideAlert() {
+        alertBox.classList.add('d-none');
+    }
+
+    function setLoading(isLoading) {
+        if (isLoading) {
+            submitBtn.disabled = true;
+            btnSpinner.classList.remove('d-none');
+        } else {
+            submitBtn.disabled = false;
+            btnSpinner.classList.add('d-none');
+        }
+    }
+
+    // Handle Form Submit
+    form.addEventListener('submit', async function(e) {
+        const checked = document.querySelector('input[name="payment_method"]:checked');
+        const paymentMethod = checked ? checked.value : 'cod';
+
+        // For COD, submit traditional form
+        if (paymentMethod === 'cod') {
+            return true;
+        }
+
+        // For Online Payments (UPI, Card, Netbanking), intercept and initiate
+        e.preventDefault();
+        hideAlert();
+
+        const address = document.getElementById('deliveryAddress').value.trim();
+        const contact = document.getElementById('contactNumber').value.trim();
+
+        if (!address || !contact) {
+            showAlert("Please enter both delivery address and contact number.");
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const resp = await fetch("{% url 'create_payment_order' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken,
+                },
+                body: JSON.stringify({
+                    delivery_address: address,
+                    contact_number: contact,
+                    payment_method: paymentMethod,
+                })
+            });
+
+            const data = await resp.json();
+            setLoading(false);
+
+            if (data.status !== 'success') {
+                showAlert(data.message || "Could not initiate payment. Please try again.");
+                return;
+            }
+
+            currentPaymentData = data;
+
+            // If real Razorpay key is configured and not running in sandbox fallback:
+            if (!data.is_sandbox && window.Razorpay) {
+                const options = {
+                    key: data.key_id,
+                    amount: data.amount_in_paise,
+                    currency: data.currency,
+                    name: data.business_name,
+                    description: data.description,
+                    order_id: data.razorpay_order_id,
+                    prefill: {
+                        name: data.customer_name,
+                        email: data.customer_email,
+                        contact: data.customer_phone,
+                    },
+                    theme: {
+                        color: "#d97706"
+                    },
+                    handler: function(response) {
+                        verifyPayment(
+                            response.razorpay_order_id,
+                            response.razorpay_payment_id,
+                            response.razorpay_signature,
+                            paymentMethod,
+                            address,
+                            contact
+                        );
+                    },
+                    modal: {
+                        ondismiss: function() {
+                            showAlert("Payment was cancelled. Your cart items have been saved.");
+                        }
+                    }
+                };
+                const rzp = new Razorpay(options);
+                rzp.open();
+            } else {
+                // Open Sandbox Simulator modal
+                document.getElementById('modalAmount').textContent = data.amount;
+                document.getElementById('modalOrderId').textContent = data.razorpay_order_id;
+                document.getElementById('modalMethod').textContent = paymentMethod;
+                document.getElementById('modalPayId').textContent = data.simulated_payment_id;
+                paymentModal.show();
+            }
+        } catch (err) {
+            setLoading(false);
+            console.error(err);
+            showAlert("An error occurred while connecting to payment services. Please try again.");
+        }
+    });
+
+    // Verification helper
+    async function verifyPayment(orderId, paymentId, signature, method, address, contact) {
+        setLoading(true);
+        try {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const resp = await fetch("{% url 'verify_payment' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken,
+                },
+                body: JSON.stringify({
+                    razorpay_order_id: orderId,
+                    razorpay_payment_id: paymentId,
+                    razorpay_signature: signature,
+                    delivery_address: address,
+                    contact_number: contact,
+                    payment_method: method,
+                })
+            });
+
+            const result = await resp.json();
+            if (result.status === 'success') {
+                window.location.href = result.redirect_url;
+            } else {
+                setLoading(false);
+                showAlert(result.message || "Payment verification failed.");
+            }
+        } catch (err) {
+            setLoading(false);
+            console.error(err);
+            showAlert("Error verifying payment with server. Please check your orders page.");
+        }
+    }
+
+    // Modal Simulate Success button
+    document.getElementById('confirmSuccessBtn').addEventListener('click', function() {
+        if (!currentPaymentData) return;
+        paymentModal.hide();
+        const address = document.getElementById('deliveryAddress').value.trim();
+        const contact = document.getElementById('contactNumber').value.trim();
+        const checked = document.querySelector('input[name="payment_method"]:checked');
+        const method = checked ? checked.value : 'upi';
+
+        verifyPayment(
+            currentPaymentData.razorpay_order_id,
+            currentPaymentData.simulated_payment_id,
+            currentPaymentData.simulated_signature,
+            method,
+            address,
+            contact
+        );
+    });
+
+    // Modal Simulate Failure button
+    document.getElementById('simulateFailBtn').addEventListener('click', function() {
+        paymentModal.hide();
+        showAlert("Simulated payment failure: The transaction was declined. Your cart remains intact.");
+    });
+</script>
+{% endblock %}

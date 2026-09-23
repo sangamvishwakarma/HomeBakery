@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+{% block title %}{{ product.name }} - HomeBakery{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 mb-4">
+        {% if product.image %}
+            <img src="{{ product.image.url }}" class="img-fluid rounded shadow-sm w-100" style="max-height: 420px; object-fit: cover;" alt="{{ product.name }}">
+        {% else %}
+            <div class="bg-light d-flex align-items-center justify-content-center rounded shadow-sm" style="height:350px;">
+                <i class="fa-solid fa-cake-candles fa-5x text-muted"></i>
+            </div>
+        {% endif %}
+    </div>
+    <div class="col-md-6">
+        <h2>{{ product.display_name }}</h2>
+        <p class="text-muted"><i class="fa-solid fa-store"></i> Sold by <strong>{{ product.seller.business_name }}</strong></p>
+        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+            <h3 class="text-success mb-0" id="mainPriceDisplay">₹{{ product.price }}</h3>
+            <span class="badge bg-secondary">{{ product.category.name }}</span>
+            {% if product.is_available %}
+                <span class="badge bg-success">In Stock</span>
+            {% else %}
+                <span class="badge bg-danger">Unavailable</span>
+            {% endif %}
+        </div>
+        <p class="lead fs-6">{{ product.description }}</p>
+        <div class="alert alert-light border py-2 px-3 mb-4">
+            <i class="fa-solid fa-clock text-warning me-2"></i>
+            <strong>Notice needed:</strong> Minimum {{ product.prep_time_hours }} hour{{ product.prep_time_hours|pluralize }} advance preparation time.
+        </div>
+
+        {% if user.is_authenticated and user.role == 'seller' %}
+            <div class="alert alert-info">
+                <i class="fa-solid fa-info-circle"></i> You are viewing this page as a seller. Switch to a customer account to place orders.
+            </div>
+        {% else %}
+            <form method="POST" action="{% url 'add_to_cart' product.id %}" id="addToCartForm">
+                {% csrf_token %}
+                <input type="hidden" name="unit" value="piece">
+
+                {% if product.is_customizable %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Customization Notes</label>
+                    <textarea name="customization_notes" class="form-control" rows="2" placeholder="E.g. eggless, write 'Happy Birthday Riya', chocolate flavor"></textarea>
+                </div>
+                {% endif %}
+
+                <div class="row g-3 mb-3 align-items-start">
+                    <div class="col-sm-5">
+                        <label class="form-label fw-semibold" id="quantityLabel">Quantity</label>
+                        <div class="input-group">
+                            <button type="button" class="btn btn-outline-secondary px-3" onclick="stepDetailQty(-1)">−</button>
+                            <input type="number" name="quantity" id="quantityInput"
+                                   value="1" min="1" step="1"
+                                   class="form-control text-center fw-bold" required>
+                            <button type="button" class="btn btn-outline-secondary px-3" onclick="stepDetailQty(1)">+</button>
+                        </div>
+                    </div>
+                    <div class="col-sm-7">
+                        <label class="form-label fw-semibold">Preferred Delivery Date &amp; Time</label>
+                        <input type="datetime-local" name="delivery_date" id="deliveryDateInput" class="form-control" required>
+                        <div class="form-text">Must be at least {{ product.prep_time_hours }}h from now.</div>
+                    </div>
+                </div>
+
+                <div class="p-2 mb-3 bg-light rounded d-flex justify-content-between align-items-center border">
+                    <span class="text-muted small">Estimated Subtotal:</span>
+                    <span class="fw-bold fs-5 text-success" id="estimatedSubtotal">₹{{ product.price }}</span>
+                </div>
+
+                {% if product.is_available %}
+                    <button type="submit" class="btn btn-bakery btn-lg w-100"><i class="fa-solid fa-cart-plus"></i> Add to Cart</button>
+                {% else %}
+                    <button type="button" class="btn btn-secondary btn-lg w-100" disabled>Currently Unavailable</button>
+                {% endif %}
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+<hr class="my-5">
+
+<div class="row">
+    <div class="col-md-7">
+        <h4 class="mb-3">Customer Ratings &amp; Reviews</h4>
+        {% for review in product.reviews.all %}
+            <div class="card mb-3 shadow-sm border-0 bg-light">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <strong><i class="fa-solid fa-user-circle me-1"></i> {{ review.customer.username }}</strong>
+                        <span class="text-warning">
+                            {% for i in "12345" %}
+                                {% if review.rating >= forloop.counter %}★{% else %}☆{% endif %}
+                            {% endfor %}
+                        </span>
+                    </div>
+                    <small class="text-muted d-block mb-2">{{ review.created_at|date:"M d, Y" }}</small>
+                    <p class="card-text mb-0">{{ review.comment }}</p>
+                </div>
+            </div>
+        {% empty %}
+            <div class="text-muted py-4 text-center bg-light rounded">
+                <i class="fa-regular fa-comments fa-2x mb-2"></i>
+                <p class="mb-0">No reviews yet. Be the first to order and leave a review!</p>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="col-md-5">
+        {% if user.is_authenticated and user.role == 'customer' %}
+            <div class="card shadow-sm p-4">
+                <h5 class="mb-3"><i class="fa-solid fa-star text-warning"></i> Leave a Review</h5>
+                <form method="POST" action="{% url 'add_review' product.id %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Rating</label>
+                        <select name="rating" class="form-select" required>
+                            <option value="5" selected>5 Stars - Excellent</option>
+                            <option value="4">4 Stars - Very Good</option>
+                            <option value="3">3 Stars - Good</option>
+                            <option value="2">2 Stars - Fair</option>
+                            <option value="1">1 Star - Poor</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Review / Feedback</label>
+                        <textarea name="comment" class="form-control" rows="3" placeholder="Share your experience with freshness, taste, packing..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-bakery w-100">Submit Review</button>
+                </form>
+            </div>
+        {% elif not user.is_authenticated %}
+            <div class="card shadow-sm p-4 text-center bg-light">
+                <h6>Have you ordered this bake?</h6>
+                <p class="small text-muted mb-3">Login to share your review and feedback.</p>
+                <a href="{% url 'login' %}?next={{ request.path }}" class="btn btn-outline-secondary btn-sm">Login to Review</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function stepDetailQty(delta) {
+        const input = document.getElementById('quantityInput');
+        if (input) {
+            let val = parseInt(input.value) || 1;
+            val += delta;
+            if (val < 1) val = 1;
+            input.value = val;
+            input.dispatchEvent(new Event('input'));
+        }
+    }
+
+    // Set min datetime for delivery picker based on prep time
+    document.addEventListener('DOMContentLoaded', function() {
+        const input = document.getElementById('deliveryDateInput');
+        if (input) {
+            const prepHours = Number("{{ product.prep_time_hours|default:24 }}");
+            const minDate = new Date(Date.now() + prepHours * 60 * 60 * 1000);
+            
+            // Format to YYYY-MM-DDTHH:MM for datetime-local
+            const year = minDate.getFullYear();
+            const month = String(minDate.getMonth() + 1).padStart(2, '0');
+            const day = String(minDate.getDate()).padStart(2, '0');
+            const hours = String(minDate.getHours()).padStart(2, '0');
+            const minutes = String(minDate.getMinutes()).padStart(2, '0');
+            
+            input.min = `${year}-${month}-${day}T${hours}:${minutes}`;
+            if (!input.value) {
+                input.value = input.min;
+            }
+        }
+
+        const productPrice = parseFloat("{{ product.price }}") || 0;
+        const qtyInput = document.getElementById('quantityInput');
+        const subtotalDisplay = document.getElementById('estimatedSubtotal');
+
+        function calculateSubtotal() {
+            const qty = parseInt(qtyInput ? qtyInput.value : 1) || 1;
+            const total = (qty * productPrice).toFixed(2);
+            if (subtotalDisplay) {
+                subtotalDisplay.textContent = `₹${total}`;
+            }
+        }
+
+        if (qtyInput) {
+            qtyInput.addEventListener('input', calculateSubtotal);
+            qtyInput.addEventListener('change', calculateSubtotal);
+        }
+        calculateSubtotal();
+    });
+</script>
+{% endblock %}
