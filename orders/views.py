@@ -515,8 +515,18 @@ def update_order_status(request, order_id):
         valid_statuses = [s[0] for s in Order.STATUS_CHOICES]
         if new_status in valid_statuses:
             order.status = new_status
+            if new_status == 'delivered' and order.payment_status != 'paid':
+                order.payment_status = 'paid'
+                order.paid_at = timezone.now()
             order.save()
             messages.success(request, f"Order #{order.id} status changed to {order.get_status_display()}.")
+            if new_status == 'delivered':
+                messages.success(
+                    request,
+                    f"Order #{order.id} marked as Delivered! Bakery Payout: ₹{order.seller_amount} (after 5% Admin Commission of ₹{order.admin_commission})."
+                )
+            else:
+                messages.success(request, f"Order #{order.id} status changed to {order.get_status_display()}.")
         else:
             messages.error(request, "Invalid order status specified.")
     return redirect('seller_dashboard')

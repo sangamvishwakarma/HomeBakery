@@ -180,3 +180,31 @@ class AccountsTests(TestCase):
         self.client.post(reverse('admin_toggle_user_status', args=[target_user.id]))
         target_user.refresh_from_db()
         self.assertTrue(target_user.is_active)
+
+    def test_admin_dashboard_commission_and_payout_metrics(self):
+        from orders.models import Order
+        from django.utils import timezone
+
+        admin_user = User.objects.create_superuser(username='admin_comm', password='AdminPass123!')
+        customer = User.objects.create_user(username='cust_comm', password='Password123!', role='customer')
+        seller_user = User.objects.create_user(username='baker_comm', password='Password123!', role='seller')
+        seller = Seller.objects.create(user=seller_user, business_name="Golden Crust", status='approved')
+
+        Order.objects.create(
+            customer=customer,
+            seller=seller,
+            delivery_address="100 Main St",
+            contact_number="9876543210",
+            delivery_date=timezone.now(),
+            total_amount=1000.00,
+            status='delivered'
+        )
+
+        self.client.force_login(admin_user)
+        response = self.client.get(reverse('admin_dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(float(response.context['total_revenue']), 1000.00)
+        self.assertEqual(float(response.context['total_admin_commission']), 50.00)
+        self.assertEqual(float(response.context['total_seller_payout']), 950.00)
+        self.assertContains(response, "50.00")
+        self.assertContains(response, "950.00")

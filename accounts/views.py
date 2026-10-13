@@ -95,6 +95,14 @@ def admin_dashboard(request):
 
     delivered_orders = Order.objects.filter(status='delivered')
     total_revenue = sum(o.total_amount for o in delivered_orders)
+    total_admin_commission = sum(o.admin_commission for o in delivered_orders)
+    total_seller_payout = sum(o.seller_amount for o in delivered_orders)
+
+    for s in all_sellers:
+        s_delivered = s.orders.filter(status='delivered')
+        s.gross_sales = sum(o.total_amount for o in s_delivered)
+        s.admin_commission_total = sum(o.admin_commission for o in s_delivered)
+        s.net_payout = sum(o.seller_amount for o in s_delivered)
 
     context = {
         'total_users': User.objects.count(),
@@ -106,6 +114,8 @@ def admin_dashboard(request):
         'total_orders': Order.objects.count(),
         'delivered_orders_count': delivered_orders.count(),
         'total_revenue': total_revenue,
+        'total_admin_commission': total_admin_commission,
+        'total_seller_payout': total_seller_payout,
         'pending_sellers': pending_sellers,
         'all_sellers': all_sellers,
         'all_orders': all_orders,

@@ -21,6 +21,7 @@
             <div class="text-muted small mb-1"><i class="fa-solid fa-hourglass-half text-warning"></i> Pending Approvals</div>
             <h3 class="fw-bold text-warning mb-0">{{ pending_sellers_count }}</h3>
             <small class="text-muted">Bakeries waiting</small>
+            <small class="text-muted">{{ approved_sellers_count }} approved of {{ total_sellers }}</small>
         </div>
     </div>
     <div class="col-md-3 col-sm-6">
@@ -40,8 +41,17 @@
     <div class="col-md-3 col-sm-6">
         <div class="card shadow-sm border-0 p-3 text-center bg-white">
             <div class="text-muted small mb-1"><i class="fa-solid fa-indian-rupee-sign text-success"></i> Delivered Volume</div>
+            <div class="text-muted small mb-1"><i class="fa-solid fa-indian-rupee-sign text-success"></i> Gross Delivered Volume</div>
             <h3 class="fw-bold text-success mb-0">₹{{ total_revenue }}</h3>
             <small class="text-muted">{{ total_customers }} customers</small>
+            <small class="text-muted">Bakery Share (95%): ₹{{ total_seller_payout }}</small>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="card shadow-sm border-0 p-3 text-center bg-white">
+            <div class="text-muted small mb-1"><i class="fa-solid fa-coins text-primary"></i> Admin Commission (5%)</div>
+            <h3 class="fw-bold text-primary mb-0">₹{{ total_admin_commission }}</h3>
+            <small class="text-muted">Platform Earnings</small>
         </div>
     </div>
 </div>
@@ -163,6 +173,9 @@
                                 <th>Owner</th>
                                 <th>Phone</th>
                                 <th>Products</th>
+                                <th>Gross Sales</th>
+                                <th>Admin Fee (5%)</th>
+                                <th>Bakery Payout (95%)</th>
                                 <th>Status</th>
                                 <th class="text-end">Manage</th>
                             </tr>
@@ -173,7 +186,14 @@
                                 <td class="fw-bold">{{ seller.business_name }}</td>
                                 <td>{{ seller.user.username }}</td>
                                 <td>{{ seller.user.phone }}</td>
+                                <td>
+                                    <div>{{ seller.user.username }}</div>
+                                    <small class="text-muted">{{ seller.user.phone }}</small>
+                                </td>
                                 <td><span class="badge bg-light text-dark border">{{ seller.products.count }}</span></td>
+                                <td>₹{{ seller.gross_sales }}</td>
+                                <td class="text-primary fw-semibold">₹{{ seller.admin_commission_total }}</td>
+                                <td class="text-success fw-bold">₹{{ seller.net_payout }}</td>
                                 <td>
                                     {% if seller.status == 'approved' %}
                                         <span class="badge bg-success">Approved</span>
@@ -206,6 +226,7 @@
                             </tr>
                             {% empty %}
                             <tr><td colspan="6" class="text-center text-muted py-4">No bakeries registered yet.</td></tr>
+                            <tr><td colspan="8" class="text-center text-muted py-4">No bakeries registered yet.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -219,6 +240,7 @@
         <div class="card shadow-sm border-0">
             <div class="card-header bg-white py-3">
                 <h5 class="mb-0"><i class="fa-solid fa-clipboard-list text-success"></i> Recent Platform Orders</h5>
+                <h5 class="mb-0"><i class="fa-solid fa-clipboard-list text-success"></i> Recent Platform Orders &amp; Commission Split</h5>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -230,6 +252,8 @@
                                 <th>Bakery</th>
                                 <th>Delivery Date</th>
                                 <th>Total</th>
+                                <th>Admin Commission (5%)</th>
+                                <th>Bakery Payout (95%)</th>
                                 <th>Status</th>
                                 <th class="text-end">View</th>
                             </tr>
@@ -242,6 +266,9 @@
                                 <td>{{ order.seller.business_name }}</td>
                                 <td>{{ order.delivery_date|date:"M d, Y h:i A" }}</td>
                                 <td class="fw-bold text-success">₹{{ order.total_amount }}</td>
+                                <td class="fw-semibold">₹{{ order.total_amount }}</td>
+                                <td class="text-primary fw-semibold">₹{{ order.admin_commission }}</td>
+                                <td class="fw-bold text-success">₹{{ order.seller_amount }}</td>
                                 <td>
                                     {% if order.status == 'pending' %}
                                         <span class="badge bg-warning text-dark">Pending</span>
@@ -263,6 +290,7 @@
                             </tr>
                             {% empty %}
                             <tr><td colspan="7" class="text-center text-muted py-4">No orders placed on platform yet.</td></tr>
+                            <tr><td colspan="9" class="text-center text-muted py-4">No orders placed on platform yet.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>

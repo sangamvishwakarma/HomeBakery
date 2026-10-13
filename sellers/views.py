@@ -22,6 +22,10 @@ def seller_dashboard(request):
     orders = Order.objects.filter(seller=seller).order_by('-order_date')
 
     total_earnings = sum(o.total_amount for o in orders.filter(status='delivered'))
+    delivered_orders = orders.filter(status='delivered')
+    gross_sales = sum(o.total_amount for o in delivered_orders)
+    total_commission = sum(o.admin_commission for o in delivered_orders)
+    total_earnings = sum(o.seller_amount for o in delivered_orders)
     pending_orders = orders.filter(status='pending').count()
 
     rating_agg = Review.objects.filter(product__seller=seller).aggregate(Avg('rating'))
@@ -34,6 +38,8 @@ def seller_dashboard(request):
         'orders': orders,
         'total_products': products.count(),
         'pending_orders': pending_orders,
+        'gross_sales': gross_sales,
+        'total_commission': total_commission,
         'total_earnings': total_earnings,
         'avg_rating': avg_rating,
     })

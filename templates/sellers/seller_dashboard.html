@@ -49,7 +49,9 @@
     <div class="col-md-3">
         <div class="card p-3 text-center shadow-sm border-0 bg-white">
             <div class="text-muted small mb-1"><i class="fa-solid fa-indian-rupee-sign"></i> Delivered Earnings</div>
+            <div class="text-muted small mb-1"><i class="fa-solid fa-indian-rupee-sign"></i> Net Bakery Payout (95%)</div>
             <h3 class="fw-bold text-success mb-0">₹{{ total_earnings }}</h3>
+            <small class="text-muted">Gross: ₹{{ gross_sales }} | Admin (5%): ₹{{ total_commission }}</small>
         </div>
     </div>
     <div class="col-md-3">
@@ -80,6 +82,7 @@
                         <th>Delivery Target</th>
                         <th>Items &amp; Details</th>
                         <th>Amount</th>
+                        <th>Payment &amp; Payout</th>
                         <th>Status</th>
                         <th>Action</th>
                     </tr>
@@ -115,9 +118,13 @@
                         </td>
                         <td>
                             <div class="fw-bold">₹{{ order.total_amount }}</div>
+                            <div class="small text-muted">Total: ₹{{ order.total_amount }}</div>
+                            <div class="small text-danger">Admin (5%): -₹{{ order.admin_commission }}</div>
+                            <div class="fw-bold text-success">Payout: ₹{{ order.seller_amount }}</div>
                             <div class="mt-1">
                                 {% if order.payment_status == 'paid' %}
                                     <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0 small"><i class="fa-solid fa-check"></i> Paid Online</span>
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0 small"><i class="fa-solid fa-check"></i> Paid</span>
                                 {% else %}
                                     <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-0 small"><i class="fa-solid fa-clock"></i> COD Due</span>
                                 {% endif %}

@@ -1,3 +1,4 @@
+from decimal import Decimal, ROUND_HALF_UP
 from django.db import models
 from accounts.models import User
 from sellers.models import Seller
@@ -39,6 +40,8 @@ class CartItem(models.Model):
 
 
 class Order(models.Model):
+    ADMIN_COMMISSION_RATE = Decimal('0.05')
+
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('preparing', 'Preparing'),
@@ -69,6 +72,15 @@ class Order(models.Model):
     delivery_date = models.DateTimeField()
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='pending')
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    admin_commission = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    seller_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+
+    def save(self, *args, **kwargs):
+        if self.total_amount is not None:
+            total = Decimal(str(self.total_amount))
+            self.admin_commission = (total * self.ADMIN_COMMISSION_RATE).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            self.seller_amount = (total - self.admin_commission).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        super().save(*args, **kwargs)
 
     @property
     def invoice_number(self):
