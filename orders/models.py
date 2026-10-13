@@ -50,8 +50,10 @@ class Order(models.Model):
         ('cancelled', 'Cancelled'),
     ]
     PAYMENT_CHOICES = [
+        ('qr', 'QR Code Scan'),
+        ('upi', 'UPI ID Transfer'),
+        ('bank_transfer', 'Bank Account Transfer'),
         ('cod', 'Cash on Delivery'),
-        ('upi', 'UPI'),
         ('card', 'Credit/Debit Card'),
         ('netbanking', 'Net Banking'),
     ]
@@ -64,7 +66,7 @@ class Order(models.Model):
     seller = models.ForeignKey(Seller, on_delete=models.CASCADE, related_name='orders')
     delivery_address = models.TextField()
     contact_number = models.CharField(max_length=15)
-    payment_method = models.CharField(max_length=15, choices=PAYMENT_CHOICES, default='cod')
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default='cod')
     payment_status = models.CharField(max_length=15, choices=PAYMENT_STATUS_CHOICES, default='pending')
     transaction_id = models.CharField(max_length=100, blank=True, null=True)
     paid_at = models.DateTimeField(blank=True, null=True)
@@ -74,13 +76,34 @@ class Order(models.Model):
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     admin_commission = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     seller_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    wallet_credited = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         if self.total_amount is not None:
             total = Decimal(str(self.total_amount))
             self.admin_commission = (total * self.ADMIN_COMMISSION_RATE).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
             self.seller_amount = (total - self.admin_commission).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+        should_credit = (
+            not self.wallet_credited
+            and self.status != 'cancelled'
+            and (self.payment_status == 'paid' or self.status == 'delivered')
+        )
+        if should_credit:
+            self.wallet_credited = True
+
         super().save(*args, **kwargs)
+
+        if should_credit:
+            # Credit 95% to Seller Wallet
+            if self.seller_id:
+                Seller.objects.filter(pk=self.seller_id).update(
+                    wallet_balance=models.F('wallet_balance') + self.seller_amount
+                )
+            # Credit 5% cut to Admin Wallet (all superuser/staff accounts)
+            User.objects.filter(models.Q(is_superuser=True) | models.Q(is_staff=True)).update(
+                wallet_balance=models.F('wallet_balance') + self.admin_commission
+            )
 
     @property
     def invoice_number(self):

@@ -19,7 +19,7 @@
                 </div>
             </div>
 
-            <form method="POST" novalidate>
+            <form method="POST" enctype="multipart/form-data" novalidate>
                 {% csrf_token %}
 
                 {% if form.non_field_errors %}
@@ -61,6 +61,45 @@
                         <div class="text-danger small mt-1">{{ form.address.errors.0 }}</div>
                     {% endif %}
                     <div class="form-text">Where orders will be prepared and picked up from.</div>
+                </div>
+
+                <hr class="my-4">
+                <h5 class="fw-bold mb-1"><i class="fa-solid fa-building-columns text-success me-1"></i> Payout &amp; Payment Details</h5>
+                <p class="text-muted small mb-3">Provide your Bank Account No., UPI ID, and Payment QR Code to receive your <strong>95% order payouts</strong> (5% platform commission applies).</p>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-7">
+                        <label class="form-label fw-semibold">Bank Account Number</label>
+                        {{ form.bank_account_number }}
+                        {% if form.bank_account_number.errors %}
+                            <div class="text-danger small mt-1">{{ form.bank_account_number.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold">IFSC Code <span class="text-muted small">(optional)</span></label>
+                        {{ form.ifsc_code }}
+                        {% if form.ifsc_code.errors %}
+                            <div class="text-danger small mt-1">{{ form.ifsc_code.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">UPI ID</label>
+                    {{ form.upi_id }}
+                    {% if form.upi_id.errors %}
+                        <div class="text-danger small mt-1">{{ form.upi_id.errors.0 }}</div>
+                    {% endif %}
+                    <div class="form-text">e.g. <code>yourbakery@okaxis</code> or <code>9876543210@ybl</code></div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Upload Payment QR Code</label>
+                    {{ form.payment_qr }}
+                    {% if form.payment_qr.errors %}
+                        <div class="text-danger small mt-1">{{ form.payment_qr.errors.0 }}</div>
+                    {% endif %}
+                    <div class="form-text">Upload your UPI / Bank QR code image so payments can be settled directly.</div>
                 </div>
 
                 <div class="alert alert-info small mb-4">

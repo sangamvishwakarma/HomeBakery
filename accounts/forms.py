@@ -60,6 +60,28 @@ class SellerOnboardingForm(StyledFormMixin, forms.Form):
         required=True,
         label="Kitchen / Pickup Address"
     )
+    bank_account_number = forms.CharField(
+        max_length=50,
+        required=False,
+        label="Bank Account Number (For Payouts)",
+        widget=forms.TextInput(attrs={'placeholder': 'e.g. 123456789012'})
+    )
+    ifsc_code = forms.CharField(
+        max_length=20,
+        required=False,
+        label="Bank IFSC Code (optional)",
+        widget=forms.TextInput(attrs={'placeholder': 'e.g. SBIN0001234'})
+    )
+    upi_id = forms.CharField(
+        max_length=100,
+        required=False,
+        label="UPI ID (For Payouts)",
+        widget=forms.TextInput(attrs={'placeholder': 'e.g. bakeryname@okaxis'})
+    )
+    payment_qr = forms.ImageField(
+        required=False,
+        label="Payment QR Code Image"
+    )
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -80,17 +102,29 @@ class SellerOnboardingForm(StyledFormMixin, forms.Form):
         user.role = 'seller'
         user.save()
 
+        defaults = {
+            'business_name': self.cleaned_data['business_name'],
+            'fssai_number': self.cleaned_data.get('fssai_number', '').strip(),
+            'bank_account_number': self.cleaned_data.get('bank_account_number', '').strip(),
+            'ifsc_code': self.cleaned_data.get('ifsc_code', '').strip().upper(),
+            'upi_id': self.cleaned_data.get('upi_id', '').strip(),
+            'status': 'pending',
+        }
+        if self.cleaned_data.get('payment_qr'):
+            defaults['payment_qr'] = self.cleaned_data['payment_qr']
+
         seller, created = Seller.objects.get_or_create(
             user=user,
-            defaults={
-                'business_name': self.cleaned_data['business_name'],
-                'fssai_number': self.cleaned_data.get('fssai_number', '').strip(),
-                'status': 'pending',
-            }
+            defaults=defaults
         )
         if not created:
             seller.business_name = self.cleaned_data['business_name']
             seller.fssai_number = self.cleaned_data.get('fssai_number', '').strip()
+            seller.bank_account_number = self.cleaned_data.get('bank_account_number', '').strip()
+            seller.ifsc_code = self.cleaned_data.get('ifsc_code', '').strip().upper()
+            seller.upi_id = self.cleaned_data.get('upi_id', '').strip()
+            if self.cleaned_data.get('payment_qr'):
+                seller.payment_qr = self.cleaned_data['payment_qr']
             seller.status = 'pending'
             seller.save()
 

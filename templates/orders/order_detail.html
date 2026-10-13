@@ -172,6 +172,24 @@
                                 <span>Bakery Payout (95%)</span>
                                 <span>₹{{ order.seller_amount }}</span>
                             </div>
+                            {% if order.seller.has_payment_details %}
+                            <hr class="my-2">
+                            <div class="fw-bold text-muted mb-1" style="font-size: 0.72rem;">BAKERY PAYOUT ACCOUNT / UPI / QR</div>
+                            {% if order.seller.bank_account_number %}
+                                <div><span class="text-muted">Acct No:</span> <strong>{{ order.seller.bank_account_number }}</strong> {% if order.seller.ifsc_code %}({{ order.seller.ifsc_code }}){% endif %}</div>
+                            {% endif %}
+                            {% if order.seller.upi_id %}
+                                <div><span class="text-muted">UPI ID:</span> <strong class="text-primary">{{ order.seller.upi_id }}</strong></div>
+                            {% endif %}
+                            {% if order.seller.payment_qr %}
+                                <div class="mt-2 text-center">
+                                    <a href="{{ order.seller.payment_qr.url }}" target="_blank">
+                                        <img src="{{ order.seller.payment_qr.url }}" alt="Seller Payment QR" class="rounded border p-1 bg-white" style="max-height: 110px; object-fit: contain;">
+                                    </a>
+                                    <div class="text-muted" style="font-size: 0.7rem;">Scan QR to pay bakery</div>
+                                </div>
+                            {% endif %}
+                            {% endif %}
                         </div>
                         {% endif %}
                     </div>

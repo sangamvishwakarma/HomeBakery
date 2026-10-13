@@ -2,7 +2,7 @@ import datetime
 import json
 import hmac
 import hashlib
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -193,10 +193,14 @@ def checkout(request):
     grand_total = cart_total + total_delivery_fee
     key_id = getattr(settings, 'RAZORPAY_KEY_ID', 'rzp_test_homebakery123')
 
+    admin_cut = (Decimal(str(grand_total)) * Order.ADMIN_COMMISSION_RATE).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    seller_payout = (Decimal(str(grand_total)) - admin_cut).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
     if request.method == 'POST':
         delivery_address = request.POST.get('delivery_address', '').strip()
         contact_number = request.POST.get('contact_number', '').strip()
         payment_method = request.POST.get('payment_method', 'cod')
+        transaction_ref = request.POST.get('transaction_ref', '').strip()
 
         if not delivery_address or not contact_number:
             messages.error(request, "Please enter both delivery address and contact number.")
@@ -205,6 +209,9 @@ def checkout(request):
                 'cart_total': cart_total,
                 'delivery_fee': total_delivery_fee,
                 'grand_total': grand_total,
+                'admin_cut': admin_cut,
+                'seller_payout': seller_payout,
+                'sellers': sellers,
                 'razorpay_key_id': key_id,
             })
 
@@ -212,7 +219,61 @@ def checkout(request):
         if payment_method not in valid_payment_methods:
             payment_method = 'cod'
 
-        if payment_method == 'cod':
+        if payment_method in ('qr', 'upi', 'bank_transfer'):
+            # Direct buyer payment via QR Code, UPI ID, or Bank Account No.
+            txn_ref = transaction_ref or f"{payment_method.upper()}-{request.user.id}-{int(timezone.now().timestamp())}"
+            first_order = None
+            with transaction.atomic():
+                for seller in sellers:
+                    seller_items = cart_items.filter(product__seller=seller)
+                    seller_total = sum(item.subtotal for item in seller_items) + DELIVERY_FEE
+
+                    order = Order.objects.create(
+                        customer=request.user,
+                        seller=seller,
+                        delivery_address=delivery_address,
+                        contact_number=contact_number,
+                        payment_method=payment_method,
+                        payment_status='paid',
+                        paid_at=timezone.now(),
+                        transaction_id=txn_ref,
+                        delivery_date=seller_items.first().delivery_date,
+                        total_amount=seller_total,
+                    )
+                    if not first_order:
+                        first_order = order
+
+                    for item in seller_items:
+                        OrderItem.objects.create(
+                            order=order,
+                            product=item.product,
+                            quantity=item.quantity,
+                            unit=item.unit,
+                            weight_at_order=item.product.weight or '',
+                            price_at_order=item.unit_price,
+                            customization_notes=item.customization_notes,
+                        )
+
+                Payment.objects.create(
+                    customer=request.user,
+                    amount=grand_total,
+                    gateway=payment_method,
+                    payment_method=payment_method,
+                    razorpay_order_id=txn_ref,
+                    status='successful',
+                )
+
+                cart_items.delete()
+
+            messages.success(
+                request,
+                f"Payment successful via {first_order.get_payment_method_display()}! Bill #{first_order.invoice_number} generated. "
+                f"5% platform cut (₹{first_order.admin_commission}) credited to Admin Wallet; "
+                f"95% (₹{first_order.seller_amount}) credited to Bakery Wallet."
+            )
+            return redirect('order_invoice', order_id=first_order.id)
+
+        elif payment_method == 'cod':
             cod_ref = f"COD-{request.user.id}-{int(timezone.now().timestamp())}"
             first_order = None
             with transaction.atomic():
@@ -267,6 +328,9 @@ def checkout(request):
         'cart_total': cart_total,
         'delivery_fee': total_delivery_fee,
         'grand_total': grand_total,
+        'admin_cut': admin_cut,
+        'seller_payout': seller_payout,
+        'sellers': sellers,
         'razorpay_key_id': key_id,
     })
 
@@ -440,11 +504,12 @@ def verify_payment(request):
         cart_items.delete()
 
     first_order_id = created_orders[0].id if created_orders else None
-    messages.success(request, f"Payment received successfully! Your order #{first_order_id} has been placed.")
+    messages.success(request, f"Payment received successfully! Bill #{created_orders[0].invoice_number if created_orders else ''} has been generated.")
     return JsonResponse({
         'status': 'success',
         'order_id': first_order_id,
-        'redirect_url': reverse('order_detail', kwargs={'order_id': first_order_id}) if first_order_id else reverse('customer_orders'),
+        'invoice_url': reverse('order_invoice', kwargs={'order_id': first_order_id}) if first_order_id else reverse('customer_orders'),
+        'redirect_url': reverse('order_invoice', kwargs={'order_id': first_order_id}) if first_order_id else reverse('customer_orders'),
     })
 
 

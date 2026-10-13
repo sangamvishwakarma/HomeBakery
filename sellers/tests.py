@@ -94,7 +94,6 @@ class SellersTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['total_products'], 1)
         self.assertEqual(response.context['pending_orders'], 1)
-        self.assertEqual(response.context['total_earnings'], 430.00)
         self.assertEqual(float(response.context['gross_sales']), 430.00)
         self.assertEqual(float(response.context['total_commission']), 21.50)
         self.assertEqual(float(response.context['total_earnings']), 408.50)
@@ -102,3 +101,39 @@ class SellersTests(TestCase):
         self.assertContains(response, "408.50")
         self.assertContains(response, "21.50")
         self.assertContains(response, "4.5")
+
+    def test_seller_update_payment_details(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        self.client.force_login(self.approved_user)
+        self.assertFalse(self.approved_seller.has_payment_details)
+
+        # Tiny valid 1x1 GIF for QR upload test
+        gif_bytes = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x80\x00\x00'
+            b'\xff\xff\xff\x00\x00\x00\x21\xf9\x04\x01\x00\x00\x00'
+            b'\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02'
+            b'\x44\x01\x00\x3b'
+        )
+        qr_file = SimpleUploadedFile('upi_qr.gif', gif_bytes, content_type='image/gif')
+
+        res = self.client.post(reverse('update_seller_payment'), {
+            'bank_account_number': '987654321012',
+            'ifsc_code': 'sbin0001234',
+            'upi_id': 'crustandcrumb@okaxis',
+            'payment_qr': qr_file,
+        })
+        self.assertRedirects(res, reverse('seller_dashboard'))
+
+        self.approved_seller.refresh_from_db()
+        self.assertTrue(self.approved_seller.has_payment_details)
+        self.assertEqual(self.approved_seller.bank_account_number, '987654321012')
+        self.assertEqual(self.approved_seller.ifsc_code, 'SBIN0001234')
+        self.assertEqual(self.approved_seller.upi_id, 'crustandcrumb@okaxis')
+        self.assertTrue(bool(self.approved_seller.payment_qr))
+
+        dash = self.client.get(reverse('seller_dashboard'))
+        self.assertContains(dash, '987654321012')
+        self.assertContains(dash, 'crustandcrumb@okaxis')
+        self.assertContains(dash, 'Payout Details Configured')
+

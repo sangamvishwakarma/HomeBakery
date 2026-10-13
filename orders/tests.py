@@ -627,3 +627,90 @@ class OrdersTests(TestCase):
         self.assertEqual(item.quantity, 7)
         self.assertEqual(float(item.subtotal), 560.00)
 
+    def test_order_admin_commission_and_seller_payout_split(self):
+        """Verify 5% admin commission and 95% bakery payout calculation and COD delivery payment update."""
+        self.client.force_login(self.customer)
+        deliv = (timezone.now() + datetime.timedelta(hours=10)).strftime('%Y-%m-%dT%H:%M')
+
+        # Add 2 Croissants (2 * 80 = 160 + 30 delivery = 190 total)
+        self.client.post(reverse('add_to_cart', args=[self.product1.id]), {
+            'quantity': 2,
+            'delivery_date': deliv,
+        })
+        self.client.post(reverse('checkout'), {
+            'delivery_address': '221B Baker Street',
+            'contact_number': '9876543210',
+            'payment_method': 'cod',
+        })
+
+        order = Order.objects.filter(customer=self.customer).latest('id')
+        self.assertEqual(float(order.total_amount), 190.00)
+        # 5% of 190.00 = 9.50; 95% of 190.00 = 180.50
+        self.assertEqual(float(order.admin_commission), 9.50)
+        self.assertEqual(float(order.seller_amount), 180.50)
+        self.assertEqual(order.payment_status, 'pending')
+
+        # Seller marks order as delivered -> payment_status becomes 'paid'
+        self.client.force_login(self.seller_user1)
+        res = self.client.post(reverse('update_order_status', args=[order.id]), {
+            'status': 'delivered',
+        })
+        self.assertRedirects(res, reverse('seller_dashboard'))
+
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'delivered')
+        self.assertEqual(order.payment_status, 'paid')
+        self.assertIsNotNone(order.paid_at)
+
+        # Verify seller sees commission breakdown on order detail and invoice
+        detail_res = self.client.get(reverse('order_detail', args=[order.id]))
+        self.assertContains(detail_res, "9.50")
+        self.assertContains(detail_res, "180.50")
+
+        inv_res = self.client.get(reverse('order_invoice', args=[order.id]))
+        self.assertContains(inv_res, "9.50")
+        self.assertContains(inv_res, "180.50")
+
+    def test_buyer_pay_via_qr_upi_bank_generates_bill_and_credits_admin_wallet(self):
+        """Verify buyer paying via QR, UPI ID, or Account No. generates bill immediately and credits 5% to Admin Wallet."""
+        admin_user = User.objects.create_superuser(username='admin_wallet', password='AdminPass123!')
+        self.seller1.bank_account_number = '112233445566'
+        self.seller1.ifsc_code = 'HDFC0001234'
+        self.seller1.upi_id = 'baker1@okaxis'
+        self.seller1.save()
+
+        self.client.force_login(self.customer)
+        deliv = (timezone.now() + datetime.timedelta(hours=10)).strftime('%Y-%m-%dT%H:%M')
+
+        # 1. Buyer adds items (2 * 80 = 160 + 30 delivery = 190.00) and pays via QR Code
+        self.client.post(reverse('add_to_cart', args=[self.product1.id]), {
+            'quantity': 2,
+            'delivery_date': deliv,
+        })
+        chk_get = self.client.get(reverse('checkout'))
+        self.assertEqual(chk_get.status_code, 200)
+        self.assertContains(chk_get, '112233445566')
+        self.assertContains(chk_get, 'baker1@okaxis')
+
+        res = self.client.post(reverse('checkout'), {
+            'delivery_address': '10 Downing Street',
+            'contact_number': '9876543210',
+            'payment_method': 'qr',
+            'transaction_ref': 'UTR9988776655',
+        })
+        order = Order.objects.filter(customer=self.customer).latest('id')
+        # Redirects directly to generated Bill / Invoice
+        self.assertRedirects(res, reverse('order_invoice', args=[order.id]))
+        self.assertEqual(order.payment_method, 'qr')
+        self.assertEqual(order.payment_status, 'paid')
+        self.assertEqual(order.transaction_id, 'UTR9988776655')
+        self.assertTrue(order.wallet_credited)
+
+        # Verify 5% Admin Wallet (9.50) and 95% Seller Wallet (180.50)
+        admin_user.refresh_from_db()
+        self.seller1.refresh_from_db()
+        self.assertEqual(float(admin_user.wallet_balance), 9.50)
+        self.assertEqual(float(self.seller1.wallet_balance), 180.50)
+
+
+

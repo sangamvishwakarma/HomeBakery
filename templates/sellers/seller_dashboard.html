@@ -48,10 +48,9 @@
     </div>
     <div class="col-md-3">
         <div class="card p-3 text-center shadow-sm border-0 bg-white">
-            <div class="text-muted small mb-1"><i class="fa-solid fa-indian-rupee-sign"></i> Delivered Earnings</div>
-            <div class="text-muted small mb-1"><i class="fa-solid fa-indian-rupee-sign"></i> Net Bakery Payout (95%)</div>
+            <div class="text-muted small mb-1"><i class="fa-solid fa-wallet text-success"></i> Bakery Wallet (95% Payout)</div>
             <h3 class="fw-bold text-success mb-0">₹{{ total_earnings }}</h3>
-            <small class="text-muted">Gross: ₹{{ gross_sales }} | Admin (5%): ₹{{ total_commission }}</small>
+            <small class="text-muted">Gross: ₹{{ gross_sales }} | Admin Wallet Cut (5%): ₹{{ total_commission }}</small>
         </div>
     </div>
     <div class="col-md-3">
@@ -68,6 +67,88 @@
     </div>
 </div>
 
+<!-- Seller Payout & Payment Details (Account No, UPI ID & QR Code) -->
+{% if not seller.has_payment_details %}
+<div class="alert alert-warning border-warning d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+        <i class="fa-solid fa-triangle-exclamation text-warning me-2"></i>
+        <strong>Payout Details Required:</strong> Please add your <strong>Bank Account No., UPI ID, and Payment QR Code</strong> below so the Admin can transfer your 95% order payouts.
+    </div>
+</div>
+{% endif %}
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h5 class="mb-0">
+            <i class="fa-solid fa-building-columns text-success me-1"></i>
+            Payout &amp; Payment Details <small class="text-muted fw-normal fs-6">(For Receiving Your 95% Bakery Share)</small>
+        </h5>
+        {% if seller.has_payment_details %}
+            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                <i class="fa-solid fa-circle-check"></i> Payout Details Configured
+            </span>
+        {% else %}
+            <span class="badge bg-warning text-dark">
+                <i class="fa-solid fa-exclamation-circle"></i> Action Needed
+            </span>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{% url 'update_seller_payment' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="row g-3 align-items-center">
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold mb-1">Bank Account Number</label>
+                    <input type="text" name="bank_account_number" value="{{ seller.bank_account_number }}" class="form-control form-control-sm" placeholder="e.g. 123456789012" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold mb-1">IFSC Code <span class="text-muted fw-normal">(optional)</span></label>
+                    <input type="text" name="ifsc_code" value="{{ seller.ifsc_code }}" class="form-control form-control-sm" placeholder="e.g. SBIN0001234">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold mb-1">UPI ID</label>
+                    <input type="text" name="upi_id" value="{{ seller.upi_id }}" class="form-control form-control-sm" placeholder="e.g. bakery@upi" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold mb-1">Payment QR Code</label>
+                    <input type="file" name="payment_qr" accept="image/*" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2 pt-md-3">
+                    <button type="submit" class="btn btn-sm btn-bakery w-100">
+                        <i class="fa-solid fa-floppy-disk"></i> Save Details
+                    </button>
+                </div>
+            </div>
+        </form>
+        {% if seller.bank_account_number or seller.upi_id or seller.payment_qr %}
+        <hr class="my-3">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 small">
+            <div class="d-flex flex-wrap gap-4">
+                <div>
+                    <span class="text-muted">Account No:</span>
+                    <strong class="ms-1">{{ seller.bank_account_number|default:"Not set" }}</strong>
+                    {% if seller.ifsc_code %}
+                        <span class="badge bg-light text-dark border ms-1">IFSC: {{ seller.ifsc_code }}</span>
+                    {% endif %}
+                </div>
+                <div>
+                    <span class="text-muted">UPI ID:</span>
+                    <strong class="ms-1 text-primary">{{ seller.upi_id|default:"Not set" }}</strong>
+                </div>
+            </div>
+            {% if seller.payment_qr %}
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-muted">Saved QR Code:</span>
+                <a href="{{ seller.payment_qr.url }}" target="_blank" title="Click to view full QR Code">
+                    <img src="{{ seller.payment_qr.url }}" alt="Payment QR" class="rounded border p-1 bg-white" style="height: 60px; width: 60px; object-fit: contain;">
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
 <div class="card shadow-sm border-0 mb-4">
     <div class="card-header bg-white py-3">
         <h5 class="mb-0"><i class="fa-solid fa-clipboard-list text-primary"></i> Customer Orders</h5>
@@ -81,7 +162,6 @@
                         <th>Customer</th>
                         <th>Delivery Target</th>
                         <th>Items &amp; Details</th>
-                        <th>Amount</th>
                         <th>Payment &amp; Payout</th>
                         <th>Status</th>
                         <th>Action</th>
@@ -117,13 +197,11 @@
                             </small>
                         </td>
                         <td>
-                            <div class="fw-bold">₹{{ order.total_amount }}</div>
                             <div class="small text-muted">Total: ₹{{ order.total_amount }}</div>
                             <div class="small text-danger">Admin (5%): -₹{{ order.admin_commission }}</div>
                             <div class="fw-bold text-success">Payout: ₹{{ order.seller_amount }}</div>
                             <div class="mt-1">
                                 {% if order.payment_status == 'paid' %}
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0 small"><i class="fa-solid fa-check"></i> Paid Online</span>
                                     <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0 small"><i class="fa-solid fa-check"></i> Paid</span>
                                 {% else %}
                                     <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-0 small"><i class="fa-solid fa-clock"></i> COD Due</span>

@@ -20,15 +20,7 @@
         <div class="card shadow-sm border-0 p-3 text-center bg-white">
             <div class="text-muted small mb-1"><i class="fa-solid fa-hourglass-half text-warning"></i> Pending Approvals</div>
             <h3 class="fw-bold text-warning mb-0">{{ pending_sellers_count }}</h3>
-            <small class="text-muted">Bakeries waiting</small>
-            <small class="text-muted">{{ approved_sellers_count }} approved of {{ total_sellers }}</small>
-        </div>
-    </div>
-    <div class="col-md-3 col-sm-6">
-        <div class="card shadow-sm border-0 p-3 text-center bg-white">
-            <div class="text-muted small mb-1"><i class="fa-solid fa-store text-success"></i> Approved Bakeries</div>
-            <h3 class="fw-bold text-success mb-0">{{ approved_sellers_count }}</h3>
-            <small class="text-muted">Out of {{ total_sellers }} total</small>
+            <small class="text-muted">{{ approved_sellers_count }} approved of {{ total_sellers }} bakeries</small>
         </div>
     </div>
     <div class="col-md-3 col-sm-6">
@@ -40,18 +32,16 @@
     </div>
     <div class="col-md-3 col-sm-6">
         <div class="card shadow-sm border-0 p-3 text-center bg-white">
-            <div class="text-muted small mb-1"><i class="fa-solid fa-indian-rupee-sign text-success"></i> Delivered Volume</div>
-            <div class="text-muted small mb-1"><i class="fa-solid fa-indian-rupee-sign text-success"></i> Gross Delivered Volume</div>
+            <div class="text-muted small mb-1"><i class="fa-solid fa-indian-rupee-sign text-success"></i> Gross Paid Volume</div>
             <h3 class="fw-bold text-success mb-0">₹{{ total_revenue }}</h3>
-            <small class="text-muted">{{ total_customers }} customers</small>
-            <small class="text-muted">Bakery Share (95%): ₹{{ total_seller_payout }}</small>
+            <small class="text-muted">Bakery Wallet Share (95%): ₹{{ total_seller_payout }}</small>
         </div>
     </div>
     <div class="col-md-3 col-sm-6">
-        <div class="card shadow-sm border-0 p-3 text-center bg-white">
-            <div class="text-muted small mb-1"><i class="fa-solid fa-coins text-primary"></i> Admin Commission (5%)</div>
+        <div class="card shadow-sm border-0 p-3 text-center bg-white border-primary">
+            <div class="text-muted small mb-1"><i class="fa-solid fa-wallet text-primary"></i> Admin Wallet (5% Cut)</div>
             <h3 class="fw-bold text-primary mb-0">₹{{ total_admin_commission }}</h3>
-            <small class="text-muted">Platform Earnings</small>
+            <small class="text-muted">Instant Commission Earnings</small>
         </div>
     </div>
 </div>
@@ -97,9 +87,9 @@
                         <thead class="table-light">
                             <tr>
                                 <th>Bakery / Business</th>
-                                <th>Owner</th>
-                                <th>Contact &amp; Location</th>
+                                <th>Owner &amp; Contact</th>
                                 <th>FSSAI License</th>
+                                <th>Payout Details (Acct / UPI / QR)</th>
                                 <th>Applied On</th>
                                 <th class="text-end">Actions</th>
                             </tr>
@@ -111,12 +101,8 @@
                                     <div class="fw-bold">{{ seller.business_name }}</div>
                                 </td>
                                 <td>
-                                    <div>{{ seller.user.username }}</div>
-                                    <small class="text-muted">{{ seller.user.email }}</small>
-                                </td>
-                                <td>
-                                    <div><i class="fa-solid fa-phone small text-muted"></i> {{ seller.user.phone|default:"N/A" }}</div>
-                                    <small class="text-muted">{{ seller.user.address|truncatewords:8|default:"No address given" }}</small>
+                                    <div>{{ seller.user.username }} <small class="text-muted">({{ seller.user.email }})</small></div>
+                                    <small class="text-muted"><i class="fa-solid fa-phone"></i> {{ seller.user.phone|default:"N/A" }} | {{ seller.user.address|truncatewords:6|default:"No address" }}</small>
                                 </td>
                                 <td>
                                     {% if seller.fssai_number %}
@@ -124,6 +110,17 @@
                                     {% else %}
                                         <span class="text-muted small">Not provided</span>
                                     {% endif %}
+                                </td>
+                                <td>
+                                    <div class="small">
+                                        <div><strong>Acct:</strong> {{ seller.bank_account_number|default:"—" }} {% if seller.ifsc_code %}<span class="text-muted">({{ seller.ifsc_code }})</span>{% endif %}</div>
+                                        <div><strong>UPI:</strong> <span class="text-primary">{{ seller.upi_id|default:"—" }}</span></div>
+                                        {% if seller.payment_qr %}
+                                            <a href="{{ seller.payment_qr.url }}" target="_blank" class="badge bg-info text-dark text-decoration-none mt-1">
+                                                <i class="fa-solid fa-qrcode"></i> View QR
+                                            </a>
+                                        {% endif %}
+                                    </div>
                                 </td>
                                 <td>{{ seller.created_at|date:"M d, Y" }}</td>
                                 <td class="text-end">
@@ -162,7 +159,7 @@
     <div class="tab-pane fade" id="sellers-panel" role="tabpanel">
         <div class="card shadow-sm border-0">
             <div class="card-header bg-white py-3">
-                <h5 class="mb-0"><i class="fa-solid fa-store text-primary"></i> All Registered Bakeries</h5>
+                <h5 class="mb-0"><i class="fa-solid fa-store text-primary"></i> All Registered Bakeries &amp; Payout Details</h5>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -170,8 +167,8 @@
                         <thead class="table-light">
                             <tr>
                                 <th>Bakery Name</th>
-                                <th>Owner</th>
-                                <th>Phone</th>
+                                <th>Owner &amp; Phone</th>
+                                <th>Payout Details (Acct / UPI / QR)</th>
                                 <th>Products</th>
                                 <th>Gross Sales</th>
                                 <th>Admin Fee (5%)</th>
@@ -184,11 +181,24 @@
                             {% for seller in all_sellers %}
                             <tr>
                                 <td class="fw-bold">{{ seller.business_name }}</td>
-                                <td>{{ seller.user.username }}</td>
-                                <td>{{ seller.user.phone }}</td>
                                 <td>
                                     <div>{{ seller.user.username }}</div>
                                     <small class="text-muted">{{ seller.user.phone }}</small>
+                                </td>
+                                <td>
+                                    <div class="small">
+                                        <div><strong>Acct:</strong> {{ seller.bank_account_number|default:"Not set" }} {% if seller.ifsc_code %}<span class="text-muted">({{ seller.ifsc_code }})</span>{% endif %}</div>
+                                        <div><strong>UPI:</strong> <span class="text-primary fw-semibold">{{ seller.upi_id|default:"Not set" }}</span></div>
+                                        {% if seller.payment_qr %}
+                                            <div class="mt-1">
+                                                <a href="{{ seller.payment_qr.url }}" target="_blank" class="btn btn-xs btn-outline-primary py-0 px-2 small">
+                                                    <i class="fa-solid fa-qrcode"></i> View QR Code
+                                                </a>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted" style="font-size: 0.75rem;">No QR uploaded</span>
+                                        {% endif %}
+                                    </div>
                                 </td>
                                 <td><span class="badge bg-light text-dark border">{{ seller.products.count }}</span></td>
                                 <td>₹{{ seller.gross_sales }}</td>
@@ -225,8 +235,7 @@
                                 </td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="6" class="text-center text-muted py-4">No bakeries registered yet.</td></tr>
-                            <tr><td colspan="8" class="text-center text-muted py-4">No bakeries registered yet.</td></tr>
+                            <tr><td colspan="9" class="text-center text-muted py-4">No bakeries registered yet.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -239,7 +248,6 @@
     <div class="tab-pane fade" id="orders-panel" role="tabpanel">
         <div class="card shadow-sm border-0">
             <div class="card-header bg-white py-3">
-                <h5 class="mb-0"><i class="fa-solid fa-clipboard-list text-success"></i> Recent Platform Orders</h5>
                 <h5 class="mb-0"><i class="fa-solid fa-clipboard-list text-success"></i> Recent Platform Orders &amp; Commission Split</h5>
             </div>
             <div class="card-body p-0">
@@ -265,7 +273,6 @@
                                 <td>{{ order.customer.username }}</td>
                                 <td>{{ order.seller.business_name }}</td>
                                 <td>{{ order.delivery_date|date:"M d, Y h:i A" }}</td>
-                                <td class="fw-bold text-success">₹{{ order.total_amount }}</td>
                                 <td class="fw-semibold">₹{{ order.total_amount }}</td>
                                 <td class="text-primary fw-semibold">₹{{ order.admin_commission }}</td>
                                 <td class="fw-bold text-success">₹{{ order.seller_amount }}</td>
@@ -289,7 +296,6 @@
                                 </td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="7" class="text-center text-muted py-4">No orders placed on platform yet.</td></tr>
                             <tr><td colspan="9" class="text-center text-muted py-4">No orders placed on platform yet.</td></tr>
                             {% endfor %}
                         </tbody>

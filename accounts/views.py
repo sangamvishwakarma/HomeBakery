@@ -49,7 +49,7 @@ def seller_register(request):
             return redirect('seller_dashboard')
 
     if request.method == 'POST':
-        form = SellerOnboardingForm(request.POST, user=request.user)
+        form = SellerOnboardingForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             form.save(user=request.user)
             messages.success(request, "Your seller application has been submitted and is awaiting admin approval!")
@@ -88,21 +88,23 @@ def admin_dashboard(request):
         messages.error(request, "Access denied. Administrator privileges required.")
         return redirect('product_list')
 
+    from django.db.models import Q
     pending_sellers = Seller.objects.filter(status='pending').order_by('-created_at')
     all_sellers = Seller.objects.all().order_by('-created_at')
     all_orders = Order.objects.all().order_by('-order_date')[:25]
     all_users = User.objects.all().order_by('-date_joined')[:30]
 
     delivered_orders = Order.objects.filter(status='delivered')
-    total_revenue = sum(o.total_amount for o in delivered_orders)
-    total_admin_commission = sum(o.admin_commission for o in delivered_orders)
-    total_seller_payout = sum(o.seller_amount for o in delivered_orders)
+    settled_orders = Order.objects.filter(Q(payment_status='paid') | Q(status='delivered')).exclude(status='cancelled')
+    total_revenue = sum(o.total_amount for o in settled_orders)
+    total_admin_commission = sum(o.admin_commission for o in settled_orders)
+    total_seller_payout = sum(o.seller_amount for o in settled_orders)
 
     for s in all_sellers:
-        s_delivered = s.orders.filter(status='delivered')
-        s.gross_sales = sum(o.total_amount for o in s_delivered)
-        s.admin_commission_total = sum(o.admin_commission for o in s_delivered)
-        s.net_payout = sum(o.seller_amount for o in s_delivered)
+        s_settled = s.orders.filter(Q(payment_status='paid') | Q(status='delivered')).exclude(status='cancelled')
+        s.gross_sales = sum(o.total_amount for o in s_settled)
+        s.admin_commission_total = sum(o.admin_commission for o in s_settled)
+        s.net_payout = sum(o.seller_amount for o in s_settled)
 
     context = {
         'total_users': User.objects.count(),
@@ -113,6 +115,7 @@ def admin_dashboard(request):
         'total_products': Product.objects.count(),
         'total_orders': Order.objects.count(),
         'delivered_orders_count': delivered_orders.count(),
+        'paid_orders_count': settled_orders.count(),
         'total_revenue': total_revenue,
         'total_admin_commission': total_admin_commission,
         'total_seller_payout': total_seller_payout,

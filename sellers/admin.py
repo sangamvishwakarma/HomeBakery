@@ -4,9 +4,9 @@ from .models import Seller
 
 @admin.register(Seller)
 class SellerAdmin(admin.ModelAdmin):
-    list_display = ('business_name', 'user', 'fssai_number', 'status', 'created_at')
+    list_display = ('business_name', 'user', 'bank_account_number', 'upi_id', 'fssai_number', 'status', 'created_at')
     list_filter = ('status', 'created_at')
-    search_fields = ('business_name', 'user__username', 'fssai_number', 'user__email')
+    search_fields = ('business_name', 'user__username', 'fssai_number', 'bank_account_number', 'upi_id', 'user__email')
     actions = ['approve_sellers', 'reject_sellers']
 
     @admin.action(description="Approve selected sellers")
