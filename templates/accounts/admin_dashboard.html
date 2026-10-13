@@ -336,7 +336,12 @@
                                         <span class="badge bg-secondary">Staff</span>
                                     {% endif %}
                                 </td>
-                                <td>{{ u.email|default:"—" }}</td>
+                                <td>
+                                    {{ u.email|default:"—" }}
+                                    {% if u.is_email_verified %}
+                                        <i class="fa-solid fa-circle-check text-success small ms-1" title="Email Verified"></i>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     {% if u.role == 'seller' %}
                                         <span class="badge bg-warning text-dark">Seller</span>
@@ -346,7 +351,12 @@
                                         <span class="badge bg-light text-dark border">Admin</span>
                                     {% endif %}
                                 </td>
-                                <td>{{ u.phone|default:"—" }}</td>
+                                <td>
+                                    {{ u.phone|default:"—" }}
+                                    {% if u.is_phone_verified %}
+                                        <i class="fa-solid fa-circle-check text-success small ms-1" title="Phone Verified"></i>
+                                    {% endif %}
+                                </td>
                                 <td>{{ u.date_joined|date:"M d, Y" }}</td>
                                 <td>
                                     {% if u.is_active %}

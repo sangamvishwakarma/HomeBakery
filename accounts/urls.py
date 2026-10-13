@@ -6,6 +6,9 @@ urlpatterns = [
     path('register/choice/', views.register_choice, name='register_choice'),
     path('register/customer/', views.customer_register, name='customer_register'),
     path('register/seller/', views.seller_register, name='seller_register'),
+    path('verify-otp/', views.verify_otp, name='verify_otp'),
+    path('resend-otp/', views.resend_otp, name='resend_otp'),
+    path('cancel-registration/', views.cancel_registration, name='cancel_registration'),
     path('login/', views.CustomLoginView.as_view(), name='login'),
     path('logout/', views.logout_view, name='logout'),
     # Admin Views

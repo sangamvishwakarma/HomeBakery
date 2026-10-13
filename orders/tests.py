@@ -130,10 +130,11 @@ class OrdersTests(TestCase):
         # GET checkout page
         get_res = self.client.get(reverse('checkout'))
         self.assertEqual(get_res.status_code, 200)
-        # subtotal: 160 + 120 = 280, 2 sellers * 30 = 60 delivery fee, grand_total = 340
+        # subtotal: 160 + 120 = 280, 5% GST = 14.00, 2 sellers * 30 = 60 delivery fee, grand_total = 354.00
         self.assertEqual(get_res.context['cart_total'], 280.00)
+        self.assertEqual(float(get_res.context['gst_amount']), 14.00)
         self.assertEqual(get_res.context['delivery_fee'], 60)
-        self.assertEqual(get_res.context['grand_total'], 340.00)
+        self.assertEqual(float(get_res.context['grand_total']), 354.00)
 
         # POST checkout
         post_res = self.client.post(reverse('checkout'), {
@@ -152,12 +153,16 @@ class OrdersTests(TestCase):
         self.assertEqual(orders.count(), 2)
 
         order1 = orders.get(seller=self.seller1)
-        self.assertEqual(order1.total_amount, 160.00 + 30)  # 190.00
+        # 160.00 + 5% GST (8.00) + 30 = 198.00
+        self.assertEqual(float(order1.gst_amount), 8.00)
+        self.assertEqual(float(order1.total_amount), 198.00)
         self.assertEqual(order1.items.count(), 1)
         self.assertEqual(order1.items.first().product, self.product1)
 
         order2 = orders.get(seller=self.seller2)
-        self.assertEqual(order2.total_amount, 120.00 + 30)  # 150.00
+        # 120.00 + 5% GST (6.00) + 30 = 156.00
+        self.assertEqual(float(order2.gst_amount), 6.00)
+        self.assertEqual(float(order2.total_amount), 156.00)
         self.assertEqual(order2.items.count(), 1)
         self.assertEqual(order2.items.first().product, self.product2)
 
@@ -275,8 +280,8 @@ class OrdersTests(TestCase):
         data = response.json()
         self.assertEqual(data['status'], 'success')
         self.assertTrue(data['razorpay_order_id'].startswith('order_test_'))
-        self.assertEqual(data['amount'], 190.0)  # 2 * 80 + 30
-        self.assertEqual(data['amount_in_paise'], 19000)
+        self.assertEqual(data['amount'], 198.0)  # 2 * 80 + 8 GST + 30 delivery
+        self.assertEqual(data['amount_in_paise'], 19800)
         self.assertIn('simulated_payment_id', data)
         self.assertIn('simulated_signature', data)
 
@@ -293,10 +298,10 @@ class OrdersTests(TestCase):
         payment_id = f"pay_test_{int(timezone.now().timestamp())}_99"
         valid_signature = generate_sandbox_signature(order_id, payment_id)
 
-        # Pre-create initiated Payment record
+        # Pre-create initiated Payment record (80 + 4 GST + 30 = 114.00)
         payment = Payment.objects.create(
             customer=self.customer,
-            amount=110.0,
+            amount=114.0,
             gateway='razorpay',
             payment_method='card',
             razorpay_order_id=order_id,
@@ -322,6 +327,8 @@ class OrdersTests(TestCase):
         # Order created
         order = Order.objects.filter(customer=self.customer).first()
         self.assertIsNotNone(order)
+        self.assertEqual(float(order.gst_amount), 4.00)
+        self.assertEqual(float(order.total_amount), 114.00)
         self.assertEqual(order.payment_status, 'paid')
         self.assertEqual(order.payment_method, 'card')
         self.assertEqual(order.transaction_id, payment_id)
@@ -512,7 +519,7 @@ class OrdersTests(TestCase):
         CartItem.objects.create(customer=self.customer, product=cake, quantity=1, delivery_date=deliv)
 
         self.client.force_login(self.customer)
-        # Total items: 160 + 500 = 660 + 30 delivery = 690
+        # Total items: 160 + 500 = 660 + 5% GST (33.00) + 30 delivery = 723.00
         post_res = self.client.post(reverse('checkout'), {
             'delivery_address': 'Flat 101, Baker Heights',
             'contact_number': '9876543210',
@@ -522,7 +529,8 @@ class OrdersTests(TestCase):
 
         order = Order.objects.filter(customer=self.customer).first()
         self.assertIsNotNone(order)
-        self.assertEqual(float(order.total_amount), 690.00)
+        self.assertEqual(float(order.gst_amount), 33.00)
+        self.assertEqual(float(order.total_amount), 723.00)
         self.assertEqual(order.items.count(), 2)
 
         piece_item = order.items.get(product=self.product1)
@@ -533,12 +541,13 @@ class OrdersTests(TestCase):
         self.assertEqual(kg_item.display_name, 'Vanilla Dream Cake (1 kg)')
         self.assertEqual(float(kg_item.quantity), 1.0)
 
-        # Check invoice output has bracketed names
+        # Check invoice output has bracketed names and GST
         inv_res = self.client.get(reverse('order_invoice', args=[order.id]))
         self.assertEqual(inv_res.status_code, 200)
         self.assertContains(inv_res, "Vanilla Dream Cake (1 kg)")
         self.assertContains(inv_res, "Croissant (1 pc)")
-        self.assertContains(inv_res, "690.0")
+        self.assertContains(inv_res, "33.00")
+        self.assertContains(inv_res, "723.0")
 
     def test_order_with_baker_defined_weight(self):
         cake = Product.objects.create(
@@ -574,6 +583,8 @@ class OrdersTests(TestCase):
         self.assertEqual(chk_res.status_code, 302)
 
         order = Order.objects.filter(customer=self.customer).latest('id')
+        self.assertEqual(float(order.gst_amount), 60.00)
+        self.assertEqual(float(order.total_amount), 1290.00)
         order_item = order.items.get(product=cake)
         self.assertEqual(order_item.weight_at_order, '1 kg')
         self.assertEqual(order_item.quantity, 2)
@@ -584,6 +595,8 @@ class OrdersTests(TestCase):
         inv_res = self.client.get(reverse('order_invoice', args=[order.id]))
         self.assertEqual(inv_res.status_code, 200)
         self.assertContains(inv_res, "Belgian Truffle Cake (1 kg)")
+        self.assertContains(inv_res, "60.00")
+        self.assertContains(inv_res, "1290.0")
 
         # Seller dashboard check
         self.client.force_login(self.seller_user1)
@@ -632,7 +645,7 @@ class OrdersTests(TestCase):
         self.client.force_login(self.customer)
         deliv = (timezone.now() + datetime.timedelta(hours=10)).strftime('%Y-%m-%dT%H:%M')
 
-        # Add 2 Croissants (2 * 80 = 160 + 30 delivery = 190 total)
+        # Add 2 Croissants (2 * 80 = 160 + 5% GST 8.00 + 30 delivery = 198 total)
         self.client.post(reverse('add_to_cart', args=[self.product1.id]), {
             'quantity': 2,
             'delivery_date': deliv,
@@ -644,10 +657,11 @@ class OrdersTests(TestCase):
         })
 
         order = Order.objects.filter(customer=self.customer).latest('id')
-        self.assertEqual(float(order.total_amount), 190.00)
-        # 5% of 190.00 = 9.50; 95% of 190.00 = 180.50
-        self.assertEqual(float(order.admin_commission), 9.50)
-        self.assertEqual(float(order.seller_amount), 180.50)
+        self.assertEqual(float(order.total_amount), 198.00)
+        self.assertEqual(float(order.gst_amount), 8.00)
+        # 5% of 198.00 = 9.90; 95% of 198.00 = 188.10
+        self.assertEqual(float(order.admin_commission), 9.90)
+        self.assertEqual(float(order.seller_amount), 188.10)
         self.assertEqual(order.payment_status, 'pending')
 
         # Seller marks order as delivered -> payment_status becomes 'paid'
@@ -664,12 +678,14 @@ class OrdersTests(TestCase):
 
         # Verify seller sees commission breakdown on order detail and invoice
         detail_res = self.client.get(reverse('order_detail', args=[order.id]))
-        self.assertContains(detail_res, "9.50")
-        self.assertContains(detail_res, "180.50")
+        self.assertContains(detail_res, "9.90")
+        self.assertContains(detail_res, "188.10")
+        self.assertContains(detail_res, "8.00")
 
         inv_res = self.client.get(reverse('order_invoice', args=[order.id]))
-        self.assertContains(inv_res, "9.50")
-        self.assertContains(inv_res, "180.50")
+        self.assertContains(inv_res, "9.90")
+        self.assertContains(inv_res, "188.10")
+        self.assertContains(inv_res, "8.00")
 
     def test_buyer_pay_via_qr_upi_bank_generates_bill_and_credits_admin_wallet(self):
         """Verify buyer paying via QR, UPI ID, or Account No. generates bill immediately and credits 5% to Admin Wallet."""
@@ -682,7 +698,7 @@ class OrdersTests(TestCase):
         self.client.force_login(self.customer)
         deliv = (timezone.now() + datetime.timedelta(hours=10)).strftime('%Y-%m-%dT%H:%M')
 
-        # 1. Buyer adds items (2 * 80 = 160 + 30 delivery = 190.00) and pays via QR Code
+        # 1. Buyer adds items (2 * 80 = 160 + 8 GST + 30 delivery = 198.00) and pays via QR Code
         self.client.post(reverse('add_to_cart', args=[self.product1.id]), {
             'quantity': 2,
             'delivery_date': deliv,
@@ -691,6 +707,7 @@ class OrdersTests(TestCase):
         self.assertEqual(chk_get.status_code, 200)
         self.assertContains(chk_get, '112233445566')
         self.assertContains(chk_get, 'baker1@okaxis')
+        self.assertContains(chk_get, '198.00')
 
         res = self.client.post(reverse('checkout'), {
             'delivery_address': '10 Downing Street',
@@ -704,13 +721,72 @@ class OrdersTests(TestCase):
         self.assertEqual(order.payment_method, 'qr')
         self.assertEqual(order.payment_status, 'paid')
         self.assertEqual(order.transaction_id, 'UTR9988776655')
+        self.assertEqual(float(order.gst_amount), 8.00)
+        self.assertEqual(float(order.total_amount), 198.00)
         self.assertTrue(order.wallet_credited)
 
-        # Verify 5% Admin Wallet (9.50) and 95% Seller Wallet (180.50)
+        # Verify 5% Admin Wallet (9.90) and 95% Seller Wallet (188.10)
         admin_user.refresh_from_db()
         self.seller1.refresh_from_db()
-        self.assertEqual(float(admin_user.wallet_balance), 9.50)
-        self.assertEqual(float(self.seller1.wallet_balance), 180.50)
+        self.assertEqual(float(admin_user.wallet_balance), 9.90)
+        self.assertEqual(float(self.seller1.wallet_balance), 188.10)
+
+    def test_5_percent_gst_calculation_and_invoice_display(self):
+        """Verify 5% GST is computed accurately in cart, checkout, order model, and displayed on bill/invoice."""
+        self.client.force_login(self.customer)
+        deliv = (timezone.now() + datetime.timedelta(hours=10)).strftime('%Y-%m-%dT%H:%M')
+
+        # Add 3 Croissants (3 * 80 = 240.00 subtotal)
+        self.client.post(reverse('add_to_cart', args=[self.product1.id]), {
+            'quantity': 3,
+            'delivery_date': deliv,
+        })
+
+        # 1. Verify Cart shows Subtotal 240, GST 12 (5% of 240), Delivery 30, Total 282
+        cart_res = self.client.get(reverse('cart_view'))
+        self.assertEqual(cart_res.status_code, 200)
+        self.assertEqual(float(cart_res.context['cart_total']), 240.00)
+        self.assertEqual(float(cart_res.context['gst_amount']), 12.00)
+        self.assertEqual(float(cart_res.context['grand_total']), 282.00)
+        self.assertContains(cart_res, "GST (5%)")
+        self.assertContains(cart_res, "12.00")
+
+        # 2. Verify Checkout page displays GST (5%) line
+        chk_res = self.client.get(reverse('checkout'))
+        self.assertEqual(chk_res.status_code, 200)
+        self.assertEqual(float(chk_res.context['gst_amount']), 12.00)
+        self.assertEqual(float(chk_res.context['grand_total']), 282.00)
+        self.assertContains(chk_res, "GST (5%)")
+        self.assertContains(chk_res, "12.00")
+
+        # 3. Complete checkout via UPI
+        post_res = self.client.post(reverse('checkout'), {
+            'delivery_address': 'Sector 15, Chandigarh',
+            'contact_number': '9876543210',
+            'payment_method': 'upi',
+            'transaction_ref': 'UPI-GST-TEST-001',
+        })
+        order = Order.objects.filter(customer=self.customer).latest('id')
+        self.assertRedirects(post_res, reverse('order_invoice', args=[order.id]))
+        self.assertEqual(float(order.gst_amount), 12.00)
+        self.assertEqual(float(order.total_amount), 282.00)
+        self.assertEqual(float(order.items_subtotal), 240.00)
+        self.assertEqual(float(order.delivery_fee), 30.00)
+
+        # 4. Verify Printable Tax Invoice shows GST (5%) with CGST 2.5% + SGST 2.5%
+        inv_res = self.client.get(reverse('order_invoice', args=[order.id]))
+        self.assertEqual(inv_res.status_code, 200)
+        self.assertContains(inv_res, "Tax Invoice / Bill")
+        self.assertContains(inv_res, "GST (5%)")
+        self.assertContains(inv_res, "CGST 2.5% + SGST 2.5%")
+        self.assertContains(inv_res, "12.00")
+        self.assertContains(inv_res, "282.00")
+
+        # 5. Verify Order Detail shows GST (5%)
+        detail_res = self.client.get(reverse('order_detail', args=[order.id]))
+        self.assertEqual(detail_res.status_code, 200)
+        self.assertContains(detail_res, "GST (5%)")
+        self.assertContains(detail_res, "12.00")
 
 
 

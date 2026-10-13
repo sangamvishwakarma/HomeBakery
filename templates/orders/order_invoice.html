@@ -475,6 +475,10 @@
                     <span>₹{{ items_subtotal }}</span>
                 </div>
                 <div class="totals-row">
+                    <span>GST (5%) <small style="color: #6b7280; font-size: 11px;">(CGST 2.5% + SGST 2.5%)</small></span>
+                    <span>₹{{ order.gst_amount }}</span>
+                </div>
+                <div class="totals-row">
                     <span>Delivery Charges</span>
                     <span>₹{{ delivery_fee }}</span>
                 </div>

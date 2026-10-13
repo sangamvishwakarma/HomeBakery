@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% block title %}Verify Email &amp; Phone - HomeBakery{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow-sm border-0 p-4 bg-white">
+            <div class="text-center mb-4">
+                <div class="d-inline-flex p-3 rounded-circle bg-warning-subtle text-warning mb-2">
+                    <i class="fa-solid fa-shield-halved fa-2x"></i>
+                </div>
+                <h3 class="fw-bold">Verify Your Identity</h3>
+                <p class="text-muted small mb-0">We sent 6-digit verification codes to verify your email address and phone number.</p>
+            </div>
+
+            <!-- Destination info cards -->
+            <div class="bg-light p-3 rounded mb-3 border">
+                <div class="d-flex align-items-center mb-2">
+                    <i class="fa-solid fa-envelope text-primary me-2"></i>
+                    <div class="small">
+                        <span class="text-muted">Email:</span>
+                        <strong class="ms-1">{{ masked_email }}</strong>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <i class="fa-solid fa-phone text-success me-2"></i>
+                    <div class="small">
+                        <span class="text-muted">Phone:</span>
+                        <strong class="ms-1">{{ masked_phone }}</strong>
+                    </div>
+                </div>
+            </div>
+
+            {% if debug_mode %}
+            <!-- Demo / Development OTP Helper Badge -->
+            <div class="alert alert-info py-2 px-3 small border mb-3">
+                <div class="fw-bold"><i class="fa-solid fa-vial me-1"></i> Testing &amp; Demo Codes:</div>
+                <div class="d-flex justify-content-between mt-1">
+                    <span>Email OTP: <code>{{ otp_record.email_otp }}</code></span>
+                    <span>Phone OTP: <code>{{ otp_record.phone_otp }}</code></span>
+                </div>
+            </div>
+            {% endif %}
+
+            <form method="POST" novalidate>
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+                <!-- Email OTP -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        <i class="fa-solid fa-envelope text-primary me-1"></i> Email Verification Code
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="fa-solid fa-key text-muted"></i></span>
+                        {{ form.email_otp }}
+                    </div>
+                    {% if form.email_otp.errors %}
+                        <div class="text-danger small mt-1">{{ form.email_otp.errors.0 }}</div>
+                    {% endif %}
+                    <div class="form-text">Check your inbox for the 6-digit code.</div>
+                </div>
+
+                <!-- Phone OTP -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">
+                        <i class="fa-solid fa-phone text-success me-1"></i> Phone Verification Code
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="fa-solid fa-mobile-screen text-muted"></i></span>
+                        {{ form.phone_otp }}
+                    </div>
+                    {% if form.phone_otp.errors %}
+                        <div class="text-danger small mt-1">{{ form.phone_otp.errors.0 }}</div>
+                    {% endif %}
+                    <div class="form-text">Enter the 6-digit SMS code sent to your phone.</div>
+                </div>
+
+                <button type="submit" class="btn btn-bakery btn-lg w-100 py-2 shadow-sm fw-bold">
+                    <i class="fa-solid fa-check-circle me-1"></i> Verify &amp; Complete Registration
+                </button>
+            </form>
+
+            <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top small">
+                <div>
+                    <span class="text-muted">Didn't receive codes?</span><br>
+                    <a href="{% url 'resend_otp' %}" class="fw-bold text-decoration-none text-primary">
+                        <i class="fa-solid fa-rotate-right me-1"></i> Resend OTPs
+                    </a>
+                </div>
+                <div class="text-end">
+                    <span class="text-muted">Wrong email or phone?</span><br>
+                    <a href="{% url 'cancel_registration' %}" class="text-decoration-none text-danger">
+                        <i class="fa-solid fa-arrow-left me-1"></i> Re-enter Details
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -13,7 +13,9 @@ class AccountsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'accounts/register.html')
 
-    def test_unified_registration_success(self):
+    def test_unified_registration_redirects_to_otp_and_verifies_successfully(self):
+        from accounts.models import OTPVerification
+
         response = self.client.post(reverse('register'), {
             'username': 'alice',
             'email': 'alice@example.com',
@@ -23,12 +25,81 @@ class AccountsTests(TestCase):
             'password2': 'ComplexPass123!',
         })
         self.assertEqual(response.status_code, 302)
-        self.assertRedirects(response, reverse('product_list'))
+        self.assertRedirects(response, reverse('verify_otp'))
 
+        # User is not created yet before OTP verification
+        self.assertFalse(User.objects.filter(username='alice').exists())
+
+        # An OTPVerification record was created
+        otp = OTPVerification.objects.get(email='alice@example.com')
+        self.assertFalse(otp.is_used)
+        self.assertEqual(len(otp.email_otp), 6)
+        self.assertEqual(len(otp.phone_otp), 6)
+
+        # GET the verify-otp page renders
+        get_res = self.client.get(reverse('verify_otp'))
+        self.assertEqual(get_res.status_code, 200)
+        self.assertContains(get_res, 'Verify Your Identity')
+
+        # Test POST wrong OTPs -> fails
+        bad_post = self.client.post(reverse('verify_otp'), {
+            'email_otp': '000000',
+            'phone_otp': '111111',
+        })
+        self.assertEqual(bad_post.status_code, 200)
+        self.assertFalse(User.objects.filter(username='alice').exists())
+
+        # Test POST correct OTPs -> succeeds
+        good_post = self.client.post(reverse('verify_otp'), {
+            'email_otp': otp.email_otp,
+            'phone_otp': otp.phone_otp,
+        })
+        self.assertEqual(good_post.status_code, 302)
+        self.assertRedirects(good_post, reverse('product_list'))
+
+        # User is now created and verified
         user = User.objects.get(username='alice')
         self.assertEqual(user.role, 'customer')
         self.assertEqual(user.phone, '9876543210')
         self.assertEqual(user.address, '12 Baker Street, London')
+        self.assertTrue(user.is_email_verified)
+        self.assertTrue(user.is_phone_verified)
+
+        otp.refresh_from_db()
+        self.assertTrue(otp.is_used)
+
+    def test_resend_otp_and_cancel_registration(self):
+        from accounts.models import OTPVerification
+
+        # Step 1: initiate registration
+        self.client.post(reverse('register'), {
+            'username': 'charlie_test',
+            'email': 'charlie@example.com',
+            'phone': '9876543299',
+            'address': '221B Baker St',
+            'password1': 'ComplexPass123!',
+            'password2': 'ComplexPass123!',
+        })
+        first_otp = OTPVerification.objects.get(email='charlie@example.com')
+
+        # Step 2: request resend
+        resend_res = self.client.get(reverse('resend_otp'))
+        self.assertEqual(resend_res.status_code, 302)
+        self.assertRedirects(resend_res, reverse('verify_otp'))
+
+        # A new OTP record exists
+        new_otp = OTPVerification.objects.filter(email='charlie@example.com').latest('id')
+        self.assertNotEqual(new_otp.id, first_otp.id)
+
+        # Step 3: cancel registration clears pending session
+        cancel_res = self.client.get(reverse('cancel_registration'))
+        self.assertEqual(cancel_res.status_code, 302)
+        self.assertRedirects(cancel_res, reverse('register'))
+
+        # verify_otp now redirects to register because session is cleared
+        no_session_res = self.client.get(reverse('verify_otp'))
+        self.assertEqual(no_session_res.status_code, 302)
+        self.assertRedirects(no_session_res, reverse('register'))
 
     def test_registration_password_mismatch(self):
         response = self.client.post(reverse('register'), {
@@ -41,6 +112,7 @@ class AccountsTests(TestCase):
         })
         self.assertEqual(response.status_code, 200)
         self.assertFalse(User.objects.filter(username='bob').exists())
+
 
     def test_seller_onboarding_requires_login(self):
         response = self.client.get(reverse('seller_register'))

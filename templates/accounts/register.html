@@ -60,7 +60,7 @@
                     {% endif %}
                 </div>
 
-                <div class="mb-4">
+                <div class="mb-3">
                     <label class="form-label fw-semibold">Confirm Password</label>
                     {{ form.password2 }}
                     {% if form.password2.errors %}
@@ -68,8 +68,13 @@
                     {% endif %}
                 </div>
 
-                <button type="submit" class="btn btn-bakery btn-lg w-100">
-                    Create Account
+                <div class="alert alert-light border small py-2 px-3 mb-4 text-muted">
+                    <i class="fa-solid fa-shield-halved text-success me-1"></i>
+                    A 6-digit verification code (OTP) will be sent to your email and phone to activate your account.
+                </div>
+
+                <button type="submit" class="btn btn-bakery btn-lg w-100 py-2 shadow-sm fw-bold">
+                    Continue to OTP Verification <i class="fa-solid fa-arrow-right ms-1"></i>
                 </button>
             </form>
 

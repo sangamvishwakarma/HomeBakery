@@ -127,11 +127,13 @@ def cart_view(request):
     sellers = {item.product.seller for item in cart_items}
     total_delivery_fee = DELIVERY_FEE * len(sellers) if cart_items else 0
     cart_total = sum(item.subtotal for item in cart_items)
-    grand_total = cart_total + total_delivery_fee
+    gst_amount = (Decimal(str(cart_total)) * Order.GST_RATE).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP) if cart_items else Decimal('0.00')
+    grand_total = cart_total + gst_amount + total_delivery_fee
 
     return render(request, 'orders/cart.html', {
         'cart_items': cart_items,
         'cart_total': cart_total,
+        'gst_amount': gst_amount,
         'delivery_fee': total_delivery_fee,
         'grand_total': grand_total,
         'seller_count': len(sellers),
@@ -190,7 +192,8 @@ def checkout(request):
     sellers = {item.product.seller for item in cart_items}
     total_delivery_fee = DELIVERY_FEE * len(sellers)
     cart_total = sum(item.subtotal for item in cart_items)
-    grand_total = cart_total + total_delivery_fee
+    gst_amount = (Decimal(str(cart_total)) * Order.GST_RATE).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    grand_total = cart_total + gst_amount + total_delivery_fee
     key_id = getattr(settings, 'RAZORPAY_KEY_ID', 'rzp_test_homebakery123')
 
     admin_cut = (Decimal(str(grand_total)) * Order.ADMIN_COMMISSION_RATE).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
@@ -207,6 +210,7 @@ def checkout(request):
             return render(request, 'orders/checkout.html', {
                 'cart_items': cart_items,
                 'cart_total': cart_total,
+                'gst_amount': gst_amount,
                 'delivery_fee': total_delivery_fee,
                 'grand_total': grand_total,
                 'admin_cut': admin_cut,
@@ -226,7 +230,9 @@ def checkout(request):
             with transaction.atomic():
                 for seller in sellers:
                     seller_items = cart_items.filter(product__seller=seller)
-                    seller_total = sum(item.subtotal for item in seller_items) + DELIVERY_FEE
+                    seller_subtotal = sum(item.subtotal for item in seller_items)
+                    seller_gst = (seller_subtotal * Order.GST_RATE).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                    seller_total = seller_subtotal + seller_gst + DELIVERY_FEE
 
                     order = Order.objects.create(
                         customer=request.user,
@@ -238,6 +244,7 @@ def checkout(request):
                         paid_at=timezone.now(),
                         transaction_id=txn_ref,
                         delivery_date=seller_items.first().delivery_date,
+                        gst_amount=seller_gst,
                         total_amount=seller_total,
                     )
                     if not first_order:
@@ -279,7 +286,9 @@ def checkout(request):
             with transaction.atomic():
                 for seller in sellers:
                     seller_items = cart_items.filter(product__seller=seller)
-                    seller_total = sum(item.subtotal for item in seller_items) + DELIVERY_FEE
+                    seller_subtotal = sum(item.subtotal for item in seller_items)
+                    seller_gst = (seller_subtotal * Order.GST_RATE).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                    seller_total = seller_subtotal + seller_gst + DELIVERY_FEE
 
                     order = Order.objects.create(
                         customer=request.user,
@@ -290,6 +299,7 @@ def checkout(request):
                         payment_status='pending',
                         transaction_id=cod_ref,
                         delivery_date=seller_items.first().delivery_date,
+                        gst_amount=seller_gst,
                         total_amount=seller_total,
                     )
                     if not first_order:
@@ -326,6 +336,7 @@ def checkout(request):
     return render(request, 'orders/checkout.html', {
         'cart_items': cart_items,
         'cart_total': cart_total,
+        'gst_amount': gst_amount,
         'delivery_fee': total_delivery_fee,
         'grand_total': grand_total,
         'admin_cut': admin_cut,
@@ -362,7 +373,8 @@ def create_payment_order(request):
     sellers = {item.product.seller for item in cart_items}
     total_delivery_fee = DELIVERY_FEE * len(sellers)
     cart_total = sum(item.subtotal for item in cart_items)
-    grand_total = cart_total + total_delivery_fee
+    gst_amount = (Decimal(str(cart_total)) * Order.GST_RATE).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    grand_total = cart_total + gst_amount + total_delivery_fee
     amount_in_paise = int(grand_total * 100)
 
     key_id = getattr(settings, 'RAZORPAY_KEY_ID', 'rzp_test_homebakery123')
@@ -467,7 +479,9 @@ def verify_payment(request):
         created_orders = []
         for seller in sellers:
             seller_items = cart_items.filter(product__seller=seller)
-            seller_total = sum(item.subtotal for item in seller_items) + DELIVERY_FEE
+            seller_subtotal = sum(item.subtotal for item in seller_items)
+            seller_gst = (seller_subtotal * Order.GST_RATE).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            seller_total = seller_subtotal + seller_gst + DELIVERY_FEE
 
             order = Order.objects.create(
                 customer=request.user,
@@ -479,6 +493,7 @@ def verify_payment(request):
                 transaction_id=razorpay_payment_id,
                 paid_at=timezone.now(),
                 delivery_date=seller_items.first().delivery_date,
+                gst_amount=seller_gst,
                 total_amount=seller_total,
             )
             created_orders.append(order)
@@ -539,7 +554,9 @@ def order_invoice(request, order_id):
         return redirect('customer_orders')
 
     items_subtotal = sum(item.subtotal for item in order.items.all())
-    delivery_fee = order.total_amount - items_subtotal
+    delivery_fee = order.total_amount - items_subtotal - order.gst_amount
+    if delivery_fee < 0:
+        delivery_fee = Decimal('0.00')
 
     return render(request, 'orders/order_invoice.html', {
         'order': order,

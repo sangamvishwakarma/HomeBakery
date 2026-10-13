@@ -41,6 +41,7 @@ class CartItem(models.Model):
 
 class Order(models.Model):
     ADMIN_COMMISSION_RATE = Decimal('0.05')
+    GST_RATE = Decimal('0.05')
 
     STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -74,6 +75,7 @@ class Order(models.Model):
     delivery_date = models.DateTimeField()
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='pending')
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    gst_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     admin_commission = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     seller_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     wallet_credited = models.BooleanField(default=False)
@@ -108,6 +110,15 @@ class Order(models.Model):
     @property
     def invoice_number(self):
         return f"INV-{self.id:05d}"
+
+    @property
+    def items_subtotal(self):
+        return sum(item.subtotal for item in self.items.all())
+
+    @property
+    def delivery_fee(self):
+        fee = self.total_amount - self.items_subtotal - self.gst_amount
+        return fee if fee >= 0 else Decimal('0.00')
 
     def __str__(self):
         return f"Order #{self.id} - {self.customer.username}"

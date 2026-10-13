@@ -132,6 +132,14 @@
                                 <i class="fa-solid fa-coins text-warning me-1"></i> Automatic Wallet Settlement &amp; Bill Generation
                             </div>
                             <div class="d-flex justify-content-between mb-1">
+                                <span>Items Subtotal:</span>
+                                <strong>₹{{ cart_total }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>GST (5%):</span>
+                                <strong>₹{{ gst_amount }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
                                 <span>Total Bill Amount:</span>
                                 <strong>₹{{ grand_total }}</strong>
                             </div>
@@ -177,8 +185,12 @@
                     </div>
 
                     <div class="d-flex justify-content-between mb-2 text-muted">
-                        <span>Subtotal</span>
+                        <span>Items Subtotal</span>
                         <span>₹{{ cart_total }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2 text-muted">
+                        <span>GST (5%)</span>
+                        <span>₹{{ gst_amount }}</span>
                     </div>
                     <div class="d-flex justify-content-between mb-2 text-muted">
                         <span>Delivery Charges</span>

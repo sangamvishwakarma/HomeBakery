@@ -35,6 +35,25 @@ class UserRegisterForm(StyledFormMixin, UserCreationForm):
 CustomerRegisterForm = UserRegisterForm
 
 
+class OTPVerificationForm(StyledFormMixin, forms.Form):
+    """Form for entering email and phone verification OTPs."""
+    email_otp = forms.CharField(
+        max_length=6,
+        min_length=6,
+        required=True,
+        label="Email Verification Code",
+        widget=forms.TextInput(attrs={'placeholder': 'Enter 6-digit Email OTP', 'autocomplete': 'one-time-code', 'maxlength': '6'})
+    )
+    phone_otp = forms.CharField(
+        max_length=6,
+        min_length=6,
+        required=True,
+        label="Phone Verification Code",
+        widget=forms.TextInput(attrs={'placeholder': 'Enter 6-digit Phone OTP', 'autocomplete': 'one-time-code', 'maxlength': '6'})
+    )
+
+
+
 class SellerOnboardingForm(StyledFormMixin, forms.Form):
     """In-app onboarding form for an authenticated user who wants to sell products."""
     business_name = forms.CharField(
